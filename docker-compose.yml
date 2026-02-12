@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: portofelvirtual-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: portofelvirtual
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: portofel_virtual_secure_2024
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d portofelvirtual"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: portofelvirtual-backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: portofelvirtual
+      DB_USER: postgres
+      DB_PASSWORD: portofel_virtual_secure_2024
+      JWT_SECRET: portofel_virtual_jwt_secret_key_2024
+      PORT: 3001
+      CORS_ORIGIN: http://localhost
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    container_name: portofelvirtual-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

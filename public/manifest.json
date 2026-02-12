@@ -1,0 +1,17 @@
+{
+  "name": "PortofelVirtual",
+  "short_name": "PortofelVirtual",
+  "description": "Aplicație de management financiar personal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F1117",
+  "theme_color": "#0F1117",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
