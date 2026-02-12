@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, FileText } from "lucide-react";
+import { Trash2, FileText, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
@@ -48,6 +48,15 @@ export default function TransactionList({ transactions, type, onDelete }) {
                     <>
                       <span className="text-slate-600">·</span>
                       <span className="text-xs text-slate-500 truncate max-w-[200px]">{tx.description}</span>
+                    </>
+                  )}
+                  {tx.is_recurring && (
+                    <>
+                      <span className="text-slate-600">·</span>
+                      <span className="inline-flex items-center gap-1 text-xs text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded-md">
+                        <RefreshCw className="w-3 h-3" />
+                        Recurentă
+                      </span>
                     </>
                   )}
                 </div>

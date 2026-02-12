@@ -41,9 +41,18 @@ Replace `YOUR_USERNAME` with your actual GitHub username.
    - README.md with setup instructions and **default admin credentials**
 
 ## Default Admin Credentials
+To create admin account execute after running
+docker exec portofelvirtual-backend node -e "
+import bcrypt from 'bcryptjs';
+import { query } from './src/db.js';
 
-**Email:** `admin@portofelvirtual.ro`  
-**Password:** `AdminPass123!`
+(async () => {
+  const pwd = 'Temporara123!';
+  const hash = await bcrypt.hash(pwd, 10);
+  await query('INSERT INTO users (id, email, password_hash, full_name, role) VALUES (\$1, \$2, \$3, \$4, \$5) ON CONFLICT DO NOTHING', ['00000000-0000-0000-0000-000000000002', 'test@test.ro', hash, 'Test Admin', 'admin']);
+  console.log('Admin creat: test@test.ro / Temporara123!');
+})();
+"
 
 **IMPORTANT:** Change this password immediately after first login!
 

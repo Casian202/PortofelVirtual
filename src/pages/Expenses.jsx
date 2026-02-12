@@ -39,6 +39,20 @@ export default function Expenses() {
     queryFn: () => api.Transaction.list("-date"),
   });
 
+  // Auto-generate recurring transactions when month changes
+  useEffect(() => {
+    const generateRecurring = async () => {
+      try {
+        await api.Transaction.generateRecurring(currentMonth);
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      } catch (error) {
+        // Silently ignore if no recurring to generate
+        console.log('Recurring generation:', error?.response?.data?.message || 'done');
+      }
+    };
+    generateRecurring();
+  }, [currentMonth, queryClient]);
+
   // Subscribe to real-time updates
   useEffect(() => {
     const unsubscribe = api.subscribeToUpdates((message) => {

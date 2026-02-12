@@ -186,6 +186,16 @@ const Transaction = {
     const response = await apiClient.delete(`/transactions/${id}`);
     return response.data;
   },
+
+  generateRecurring: async (month) => {
+    const response = await apiClient.post('/transactions/generate-recurring', { month });
+    return response.data;
+  },
+
+  stopRecurring: async (groupId) => {
+    const response = await apiClient.post(`/transactions/stop-recurring/${groupId}`);
+    return response.data;
+  },
 };
 
 // BudgetCategory API

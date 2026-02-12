@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -17,7 +18,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Save } from "lucide-react";
+import { Plus, Save, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 
 export default function TransactionForm({ open, onOpenChange, type, categories, currentMonth, onSubmit }) {
@@ -28,6 +29,7 @@ export default function TransactionForm({ open, onOpenChange, type, categories, 
     description: "",
     date: format(new Date(), "yyyy-MM-dd"),
     currency: "RON",
+    is_recurring: false,
   });
 
   const handleCategoryChange = (catId) => {
@@ -43,7 +45,7 @@ export default function TransactionForm({ open, onOpenChange, type, categories, 
       type,
       month: currentMonth,
     });
-    setFormData({ category_id: "", category_name: "", amount: "", description: "", date: format(new Date(), "yyyy-MM-dd"), currency: "RON" });
+    setFormData({ category_id: "", category_name: "", amount: "", description: "", date: format(new Date(), "yyyy-MM-dd"), currency: "RON", is_recurring: false });
     onOpenChange(false);
   };
 
@@ -120,6 +122,22 @@ export default function TransactionForm({ open, onOpenChange, type, categories, 
               className="bg-[#0F1117] border-[#2A2E3D] text-white mt-1.5 rounded-xl h-11"
             />
           </div>
+
+          {type === "expense" && (
+            <div className="flex items-center justify-between rounded-xl bg-[#0F1117] border border-[#2A2E3D] p-3">
+              <div className="flex items-center gap-2">
+                <RefreshCw className={`w-4 h-4 ${formData.is_recurring ? 'text-orange-400' : 'text-slate-500'}`} />
+                <div>
+                  <Label className="text-sm text-white cursor-pointer">Recurentă lunar</Label>
+                  <p className="text-xs text-slate-500">Se va genera automat în fiecare lună</p>
+                </div>
+              </div>
+              <Switch
+                checked={formData.is_recurring}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_recurring: checked })}
+              />
+            </div>
+          )}
 
           <div>
             <Label className="text-slate-400 text-sm">Descriere (opțional)</Label>

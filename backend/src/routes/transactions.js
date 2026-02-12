@@ -80,7 +80,7 @@ router.get('/:id', async (req, res) => {
 // Create transaction
 router.post('/', async (req, res) => {
   try {
-    const { amount, type, category_id, category_name, description, date, month, currency = 'RON' } = req.body;
+    const { amount, type, category_id, category_name, description, date, month, currency = 'RON', is_recurring = false } = req.body;
 
     if (!amount || !type || !category_name || !date || !month) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -88,12 +88,14 @@ router.post('/', async (req, res) => {
 
     const id = uuidv4();
     const now = new Date();
+    // If recurring, set a group id so we can track all copies
+    const recurring_group_id = is_recurring ? uuidv4() : null;
 
     const transaction = await getOne(
-      `INSERT INTO transactions (id, amount, type, category_id, category_name, description, date, month, currency, created_by, created_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO transactions (id, amount, type, category_id, category_name, description, date, month, currency, is_recurring, recurring_group_id, created_by, created_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
-      [id, amount, type, category_id || null, category_name, description || null, date, month, currency, req.user.id, now]
+      [id, amount, type, category_id || null, category_name, description || null, date, month, currency, is_recurring, recurring_group_id, req.user.id, now]
     );
 
     // Broadcast update via WebSocket
@@ -109,7 +111,7 @@ router.post('/', async (req, res) => {
 // Update transaction
 router.put('/:id', async (req, res) => {
   try {
-    const { amount, type, category_id, category_name, description, date, month, currency } = req.body;
+    const { amount, type, category_id, category_name, description, date, month, currency, is_recurring } = req.body;
 
     // Check if transaction exists and belongs to user
     const existing = await getOne(
@@ -123,8 +125,8 @@ router.put('/:id', async (req, res) => {
 
     const transaction = await getOne(
       `UPDATE transactions
-       SET amount = $1, type = $2, category_id = $3, category_name = $4, description = $5, date = $6, month = $7, currency = $8
-       WHERE id = $9
+       SET amount = $1, type = $2, category_id = $3, category_name = $4, description = $5, date = $6, month = $7, currency = $8, is_recurring = $9
+       WHERE id = $10
        RETURNING *`,
       [
         amount ?? existing.amount,
@@ -135,6 +137,7 @@ router.put('/:id', async (req, res) => {
         date ?? existing.date,
         month ?? existing.month,
         currency ?? existing.currency,
+        is_recurring ?? existing.is_recurring,
         req.params.id
       ]
     );
@@ -170,6 +173,78 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Transaction deleted successfully' });
   } catch (error) {
     console.error('Delete transaction error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Generate recurring transactions for a given month
+router.post('/generate-recurring', async (req, res) => {
+  try {
+    const { month } = req.body;
+    if (!month) {
+      return res.status(400).json({ error: 'Month is required (YYYY-MM)' });
+    }
+
+    // Find all recurring templates for this user (original ones with is_recurring=true)
+    const recurringTemplates = await getMany(
+      `SELECT DISTINCT ON (recurring_group_id) *
+       FROM transactions
+       WHERE created_by = $1 AND is_recurring = true AND recurring_group_id IS NOT NULL
+       ORDER BY recurring_group_id, created_date ASC`,
+      [req.user.id]
+    );
+
+    let created = 0;
+    for (const tmpl of recurringTemplates) {
+      // Check if already generated for this month
+      const existing = await getOne(
+        `SELECT id FROM transactions 
+         WHERE recurring_group_id = $1 AND month = $2 AND created_by = $3`,
+        [tmpl.recurring_group_id, month, req.user.id]
+      );
+
+      if (!existing) {
+        // Compute the date: same day of month, different month
+        const day = new Date(tmpl.date).getDate().toString().padStart(2, '0');
+        const newDate = `${month}-${day}`;
+
+        const id = uuidv4();
+        await query(
+          `INSERT INTO transactions (id, amount, type, category_id, category_name, description, date, month, currency, is_recurring, recurring_group_id, created_by, created_date)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())`,
+          [id, tmpl.amount, tmpl.type, tmpl.category_id, tmpl.category_name, tmpl.description, newDate, month, tmpl.currency, true, tmpl.recurring_group_id, req.user.id]
+        );
+        created++;
+      }
+    }
+
+    // Broadcast update
+    if (created > 0) {
+      broadcast({ type: 'transaction_created', data: { count: created }, userId: req.user.id });
+    }
+
+    res.json({ message: `${created} recurring transactions generated for ${month}`, created });
+  } catch (error) {
+    console.error('Generate recurring error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Stop recurring for a specific group
+router.post('/stop-recurring/:groupId', async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    
+    await query(
+      `UPDATE transactions SET is_recurring = false, recurring_group_id = NULL
+       WHERE recurring_group_id = $1 AND created_by = $2`,
+      [groupId, req.user.id]
+    );
+
+    broadcast({ type: 'transaction_updated', data: { recurring_stopped: groupId }, userId: req.user.id });
+    res.json({ message: 'Recurring stopped successfully' });
+  } catch (error) {
+    console.error('Stop recurring error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
