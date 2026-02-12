@@ -7,7 +7,7 @@ export const seedDatabase = async () => {
     console.log('Seeding database...');
 
     // Generate password hash
-    const password = 'Temporara2024!';
+    const password = 'AdminPass123!';
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Fixed admin user ID
@@ -20,7 +20,7 @@ export const seedDatabase = async () => {
       ON CONFLICT (email) DO UPDATE SET password_hash = $3, must_change_password = $6
     `, [
       adminUserId,
-      'casitoadere@gmail.com',
+      'admin@portofelvirtual.ro',
       passwordHash,
       'Administrator',
       'admin',
