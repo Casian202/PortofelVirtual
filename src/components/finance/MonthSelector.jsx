@@ -18,7 +18,9 @@ export default function MonthSelector({ currentMonth, onChange }) {
   };
 
   const goToday = () => {
-    onChange(format(new Date(), "yyyy-MM"));
+    const now = new Date();
+    const roMonth = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit' }).format(now).slice(0, 7);
+    onChange(roMonth);
   };
 
   const monthLabel = format(date, "MMMM yyyy", { locale: ro });

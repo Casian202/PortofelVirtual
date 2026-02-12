@@ -20,13 +20,19 @@ import {
 import { Save, Plus } from "lucide-react";
 import { format } from "date-fns";
 
+// Helper: get current date in Romania timezone
+const getRomaniaDate = () => {
+  const now = new Date();
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+};
+
 export default function InvestmentForm({ open, onOpenChange, investment, onSubmit }) {
   const [formData, setFormData] = useState({
     name: "",
     type: "stocks",
     initial_amount: "",
     current_value: "",
-    purchase_date: format(new Date(), "yyyy-MM-dd"),
+    purchase_date: getRomaniaDate(),
     notes: "",
   });
 
@@ -37,7 +43,7 @@ export default function InvestmentForm({ open, onOpenChange, investment, onSubmi
         type: investment.type || "stocks",
         initial_amount: investment.initial_amount || "",
         current_value: investment.current_value || "",
-        purchase_date: investment.purchase_date || format(new Date(), "yyyy-MM-dd"),
+        purchase_date: investment.purchase_date || getRomaniaDate(),
         notes: investment.notes || "",
       });
     } else {
@@ -46,7 +52,7 @@ export default function InvestmentForm({ open, onOpenChange, investment, onSubmi
         type: "stocks",
         initial_amount: "",
         current_value: "",
-        purchase_date: format(new Date(), "yyyy-MM-dd"),
+        purchase_date: getRomaniaDate(),
         notes: "",
       });
     }

@@ -24,8 +24,14 @@ const currencyColors = {
   'GBP': 'purple'
 };
 
+// Helper: get current month in Romania timezone
+const getRomaniaMonth = () => {
+  const now = new Date();
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit' }).format(now).slice(0, 7);
+};
+
 export default function Incomes() {
-  const [currentMonth, setCurrentMonth] = useState(format(new Date(), "yyyy-MM"));
+  const [currentMonth, setCurrentMonth] = useState(getRomaniaMonth());
   const [showForm, setShowForm] = useState(false);
   const queryClient = useQueryClient();
 
@@ -38,6 +44,19 @@ export default function Incomes() {
     queryKey: ["transactions"],
     queryFn: () => api.Transaction.list("-date"),
   });
+
+  // Auto-generate recurring transactions when month changes
+  useEffect(() => {
+    const generateRecurring = async () => {
+      try {
+        await api.Transaction.generateRecurring(currentMonth);
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      } catch (error) {
+        console.log('Recurring generation:', error?.response?.data?.message || 'done');
+      }
+    };
+    generateRecurring();
+  }, [currentMonth, queryClient]);
 
   // Subscribe to real-time updates
   useEffect(() => {

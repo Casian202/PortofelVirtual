@@ -80,7 +80,7 @@ router.get('/:id', async (req, res) => {
 // Create transaction
 router.post('/', async (req, res) => {
   try {
-    const { amount, type, category_id, category_name, description, date, month, currency = 'RON', is_recurring = false } = req.body;
+    const { amount, type, category_id, category_name, description, date, month, currency = 'RON', is_recurring = false, recurring_day } = req.body;
 
     if (!amount || !type || !category_name || !date || !month) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -90,12 +90,14 @@ router.post('/', async (req, res) => {
     const now = new Date();
     // If recurring, set a group id so we can track all copies
     const recurring_group_id = is_recurring ? uuidv4() : null;
+    // Extract the day from the date if recurring_day not provided
+    const rDay = is_recurring ? (recurring_day || new Date(date).getDate()) : null;
 
     const transaction = await getOne(
-      `INSERT INTO transactions (id, amount, type, category_id, category_name, description, date, month, currency, is_recurring, recurring_group_id, created_by, created_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      `INSERT INTO transactions (id, amount, type, category_id, category_name, description, date, month, currency, is_recurring, recurring_group_id, recurring_day, created_by, created_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
-      [id, amount, type, category_id || null, category_name, description || null, date, month, currency, is_recurring, recurring_group_id, req.user.id, now]
+      [id, amount, type, category_id || null, category_name, description || null, date, month, currency, is_recurring, recurring_group_id, rDay, req.user.id, now]
     );
 
     // Broadcast update via WebSocket
@@ -111,7 +113,7 @@ router.post('/', async (req, res) => {
 // Update transaction
 router.put('/:id', async (req, res) => {
   try {
-    const { amount, type, category_id, category_name, description, date, month, currency, is_recurring } = req.body;
+    const { amount, type, category_id, category_name, description, date, month, currency, is_recurring, recurring_day } = req.body;
 
     // Check if transaction exists and belongs to user
     const existing = await getOne(
@@ -125,8 +127,8 @@ router.put('/:id', async (req, res) => {
 
     const transaction = await getOne(
       `UPDATE transactions
-       SET amount = $1, type = $2, category_id = $3, category_name = $4, description = $5, date = $6, month = $7, currency = $8, is_recurring = $9
-       WHERE id = $10
+       SET amount = $1, type = $2, category_id = $3, category_name = $4, description = $5, date = $6, month = $7, currency = $8, is_recurring = $9, recurring_day = $10
+       WHERE id = $11
        RETURNING *`,
       [
         amount ?? existing.amount,
@@ -138,6 +140,7 @@ router.put('/:id', async (req, res) => {
         month ?? existing.month,
         currency ?? existing.currency,
         is_recurring ?? existing.is_recurring,
+        recurring_day ?? existing.recurring_day,
         req.params.id
       ]
     );
@@ -204,15 +207,19 @@ router.post('/generate-recurring', async (req, res) => {
       );
 
       if (!existing) {
-        // Compute the date: same day of month, different month
-        const day = new Date(tmpl.date).getDate().toString().padStart(2, '0');
-        const newDate = `${month}-${day}`;
+        // Use recurring_day if set, otherwise extract from original date
+        const day = (tmpl.recurring_day || new Date(tmpl.date).getDate()).toString().padStart(2, '0');
+        // Clamp to last day of the target month (e.g., day 31 in February -> 28/29)
+        const [year, mon] = month.split('-').map(Number);
+        const lastDayOfMonth = new Date(year, mon, 0).getDate();
+        const clampedDay = Math.min(parseInt(day), lastDayOfMonth).toString().padStart(2, '0');
+        const newDate = `${month}-${clampedDay}`;
 
         const id = uuidv4();
         await query(
-          `INSERT INTO transactions (id, amount, type, category_id, category_name, description, date, month, currency, is_recurring, recurring_group_id, created_by, created_date)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())`,
-          [id, tmpl.amount, tmpl.type, tmpl.category_id, tmpl.category_name, tmpl.description, newDate, month, tmpl.currency, true, tmpl.recurring_group_id, req.user.id]
+          `INSERT INTO transactions (id, amount, type, category_id, category_name, description, date, month, currency, is_recurring, recurring_group_id, recurring_day, created_by, created_date)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())`,
+          [id, tmpl.amount, tmpl.type, tmpl.category_id, tmpl.category_name, tmpl.description, newDate, month, tmpl.currency, true, tmpl.recurring_group_id, tmpl.recurring_day, req.user.id]
         );
         created++;
       }

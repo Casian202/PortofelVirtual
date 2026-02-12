@@ -24,8 +24,14 @@ const currencyColors = {
   'GBP': 'purple'
 };
 
+// Helper: get current month in Romania timezone
+const getRomaniaMonth = () => {
+  const now = new Date();
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit' }).format(now).slice(0, 7);
+};
+
 export default function Expenses() {
-  const [currentMonth, setCurrentMonth] = useState(format(new Date(), "yyyy-MM"));
+  const [currentMonth, setCurrentMonth] = useState(getRomaniaMonth());
   const [showForm, setShowForm] = useState(false);
   const queryClient = useQueryClient();
 

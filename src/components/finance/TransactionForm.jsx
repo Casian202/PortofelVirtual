@@ -18,8 +18,20 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Save, RefreshCw } from "lucide-react";
+import { Plus, Save, RefreshCw, CalendarClock } from "lucide-react";
 import { format } from "date-fns";
+
+// Helper: get current date/time in Romania timezone
+const getRomaniaDate = () => {
+  const now = new Date();
+  const ro = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+  return ro; // returns YYYY-MM-DD
+};
+
+const getRomaniaDay = () => {
+  const now = new Date();
+  return parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Bucharest', day: 'numeric' }).format(now));
+};
 
 export default function TransactionForm({ open, onOpenChange, type, categories, currentMonth, onSubmit }) {
   const [formData, setFormData] = useState({
@@ -27,9 +39,10 @@ export default function TransactionForm({ open, onOpenChange, type, categories, 
     category_name: "",
     amount: "",
     description: "",
-    date: format(new Date(), "yyyy-MM-dd"),
+    date: getRomaniaDate(),
     currency: "RON",
     is_recurring: false,
+    recurring_day: getRomaniaDay(),
   });
 
   const handleCategoryChange = (catId) => {
@@ -39,13 +52,20 @@ export default function TransactionForm({ open, onOpenChange, type, categories, 
 
   const handleSubmit = () => {
     if (!formData.category_name || !formData.amount) return;
+    // If recurring, override the date to use the selected day in the current month
+    let submitDate = formData.date;
+    if (formData.is_recurring) {
+      const day = String(formData.recurring_day).padStart(2, '0');
+      submitDate = `${currentMonth}-${day}`;
+    }
     onSubmit({
       ...formData,
+      date: submitDate,
       amount: parseFloat(formData.amount),
       type,
       month: currentMonth,
     });
-    setFormData({ category_id: "", category_name: "", amount: "", description: "", date: format(new Date(), "yyyy-MM-dd"), currency: "RON", is_recurring: false });
+    setFormData({ category_id: "", category_name: "", amount: "", description: "", date: getRomaniaDate(), currency: "RON", is_recurring: false, recurring_day: getRomaniaDay() });
     onOpenChange(false);
   };
 
@@ -123,19 +143,42 @@ export default function TransactionForm({ open, onOpenChange, type, categories, 
             />
           </div>
 
-          {type === "expense" && (
-            <div className="flex items-center justify-between rounded-xl bg-[#0F1117] border border-[#2A2E3D] p-3">
-              <div className="flex items-center gap-2">
-                <RefreshCw className={`w-4 h-4 ${formData.is_recurring ? 'text-orange-400' : 'text-slate-500'}`} />
-                <div>
-                  <Label className="text-sm text-white cursor-pointer">Recurentă lunar</Label>
-                  <p className="text-xs text-slate-500">Se va genera automat în fiecare lună</p>
-                </div>
+          <div className="flex items-center justify-between rounded-xl bg-[#0F1117] border border-[#2A2E3D] p-3">
+            <div className="flex items-center gap-2">
+              <RefreshCw className={`w-4 h-4 ${formData.is_recurring ? 'text-orange-400' : 'text-slate-500'}`} />
+              <div>
+                <Label className="text-sm text-white cursor-pointer">Recurentă lunar</Label>
+                <p className="text-xs text-slate-500">Se va genera automat în fiecare lună</p>
               </div>
-              <Switch
-                checked={formData.is_recurring}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_recurring: checked })}
-              />
+            </div>
+            <Switch
+              checked={formData.is_recurring}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_recurring: checked })}
+            />
+          </div>
+
+          {formData.is_recurring && (
+            <div>
+              <Label className="text-slate-400 text-sm flex items-center gap-1.5">
+                <CalendarClock className="w-3.5 h-3.5" />
+                Ziua din lună
+              </Label>
+              <Select
+                value={String(formData.recurring_day)}
+                onValueChange={(val) => setFormData({ ...formData, recurring_day: parseInt(val) })}
+              >
+                <SelectTrigger className="bg-[#0F1117] border-[#2A2E3D] text-white mt-1.5 rounded-xl h-11">
+                  <SelectValue placeholder="Selectează ziua" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1A1D29] border-[#2A2E3D] text-white max-h-60">
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                    <SelectItem key={day} value={String(day)} className="hover:bg-[#222636]">
+                      Ziua {day}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-orange-400/70 mt-1">Tranzacția se va genera pe data de {formData.recurring_day} în fiecare lună</p>
             </div>
           )}
 

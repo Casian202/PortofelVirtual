@@ -55,7 +55,7 @@ export default function TransactionList({ transactions, type, onDelete }) {
                       <span className="text-slate-600">·</span>
                       <span className="inline-flex items-center gap-1 text-xs text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded-md">
                         <RefreshCw className="w-3 h-3" />
-                        Recurentă
+                        Recurentă{tx.recurring_day ? ` (ziua ${tx.recurring_day})` : ''}
                       </span>
                     </>
                   )}

@@ -71,9 +71,12 @@ export const broadcast = (message) => {
   });
 };
 
+// Set timezone to Romania
+process.env.TZ = 'Europe/Bucharest';
+
 // Middleware
 app.use(cors({
-  origin: ['http://localhost', 'http://127.0.0.1', 'http://localhost:80'],
+  origin: ['http://localhost', 'http://127.0.0.1', 'http://localhost:80', 'http://localhost:8888', process.env.CORS_ORIGIN].filter(Boolean),
   credentials: true
 }));
 app.use(express.json());

@@ -23,8 +23,14 @@ import ExpensesPieChart from "../components/finance/ExpensesPieChart";
 import IncomesPieChart from "../components/finance/IncomesPieChart";
 import CategoryTable from "../components/finance/CategoryTable";
 
+// Helper: get current month in Romania timezone
+const getRomaniaMonth = () => {
+  const now = new Date();
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit' }).format(now).slice(0, 7);
+};
+
 export default function Dashboard() {
-  const [currentMonth, setCurrentMonth] = useState(format(new Date(), "yyyy-MM"));
+  const [currentMonth, setCurrentMonth] = useState(getRomaniaMonth());
   const [selectedCurrency, setSelectedCurrency] = useState('RON');
   const queryClient = useQueryClient();
 
