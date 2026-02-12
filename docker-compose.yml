@@ -47,7 +47,7 @@ services:
     container_name: portofelvirtual-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "8888:80"
     depends_on:
       - backend
 
