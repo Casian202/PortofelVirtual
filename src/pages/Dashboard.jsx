@@ -95,7 +95,6 @@ export default function Dashboard() {
   const expensePieData = Object.entries(expensesByCategory).map(([name, data]) => ({
     name,
     value: data.amount,
-    percent: totalExpense > 0 ? ((data.amount / totalExpense) * 100).toFixed(1) : 0,
   }));
 
   const expenseTableData = Object.entries(expensesByCategory)
@@ -115,7 +114,6 @@ export default function Dashboard() {
   const incomePieData = Object.entries(incomesByCategory).map(([name, data]) => ({
     name,
     value: data.amount,
-    percent: totalIncome > 0 ? ((data.amount / totalIncome) * 100).toFixed(1) : 0,
   }));
 
   const incomeTableData = Object.entries(incomesByCategory)
@@ -267,7 +265,7 @@ export default function Dashboard() {
             <TrendingDown className="w-5 h-5 text-red-400" />
             Distribuție Cheltuieli
           </h2>
-          <ExpensesPieChart data={expensePieData} />
+          <ExpensesPieChart data={expensePieData} currency={getCurrencySymbol(selectedCurrency)} />
         </motion.div>
 
         {/* Incomes Distribution */}
@@ -281,7 +279,7 @@ export default function Dashboard() {
             <TrendingUp className="w-5 h-5 text-emerald-400" />
             Distribuție Venituri
           </h2>
-          <IncomesPieChart data={incomePieData} />
+          <IncomesPieChart data={incomePieData} currency={getCurrencySymbol(selectedCurrency)} />
         </motion.div>
       </div>
 
@@ -295,7 +293,7 @@ export default function Dashboard() {
           className="rounded-2xl bg-[#1A1D29] border border-[#2A2E3D] p-6"
         >
           <h2 className="text-lg font-bold mb-4">Detalii Cheltuieli pe Categorie</h2>
-          <CategoryTable data={expenseTableData} type="expense" />
+          <CategoryTable data={expenseTableData} type="expense" currency={getCurrencySymbol(selectedCurrency)} />
         </motion.div>
 
         {/* Incomes Table */}
@@ -306,7 +304,7 @@ export default function Dashboard() {
           className="rounded-2xl bg-[#1A1D29] border border-[#2A2E3D] p-6"
         >
           <h2 className="text-lg font-bold mb-4">Detalii Venituri pe Categorie</h2>
-          <CategoryTable data={incomeTableData} type="income" />
+          <CategoryTable data={incomeTableData} type="income" currency={getCurrencySymbol(selectedCurrency)} />
         </motion.div>
       </div>
 

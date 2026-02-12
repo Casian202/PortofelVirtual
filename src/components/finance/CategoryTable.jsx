@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
-export default function CategoryTable({ data, type = "expense" }) {
+export default function CategoryTable({ data, type = "expense", currency = 'RON' }) {
   if (!data || data.length === 0) {
     return (
       <div className="text-center py-8 text-slate-500 text-sm">
@@ -39,7 +39,7 @@ export default function CategoryTable({ data, type = "expense" }) {
                 <TableCell className={`text-right font-semibold ${
                   type === "income" ? "text-emerald-400" : "text-red-400"
                 }`}>
-                  {formatCurrency(item.amount)} RON
+                  {formatCurrency(item.amount)} {currency}
                 </TableCell>
                 <TableCell className="text-right text-slate-400">
                   {percent}%
@@ -55,7 +55,7 @@ export default function CategoryTable({ data, type = "expense" }) {
             <TableCell className={`text-right font-bold text-lg ${
               type === "income" ? "text-emerald-400" : "text-red-400"
             }`}>
-              {formatCurrency(total)} RON
+              {formatCurrency(total)} {currency}
             </TableCell>
             <TableCell className="text-right font-bold">100%</TableCell>
             <TableCell className="text-right font-bold text-slate-400">
