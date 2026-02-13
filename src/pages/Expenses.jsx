@@ -117,14 +117,15 @@ export default function Expenses() {
           </motion.h1>
           <p className="text-slate-500 text-sm mt-1">Gestionează cheltuielile lunare</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />
           <Button
             onClick={() => setShowForm(true)}
-            className="bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium h-10 px-4"
+            className="bg-red-500 hover:bg-red-600 text-white rounded-xl font-medium h-10 px-4 whitespace-nowrap"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Adaugă Cheltuială
+            <span className="hidden sm:inline">Adaugă Cheltuială</span>
+            <span className="sm:hidden">Adaugă</span>
           </Button>
         </div>
       </div>
@@ -155,9 +156,9 @@ export default function Expenses() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="rounded-2xl bg-[#1A1D29] border border-[#2A2E3D] p-6"
+          className="rounded-2xl bg-[#1A1D29] border border-[#2A2E3D] p-3 sm:p-6"
         >
-          <h2 className="text-lg font-bold mb-4">Top Categorii</h2>
+          <h2 className="text-base sm:text-lg font-bold mb-4">Top Categorii</h2>
           <div className="space-y-3">
             {topCategories.map((cat) => {
               const totalForCurr = totalsByCurrency[cat.currency] || 1;
@@ -187,9 +188,9 @@ export default function Expenses() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="rounded-2xl bg-[#1A1D29] border border-[#2A2E3D] p-6"
+        className="rounded-2xl bg-[#1A1D29] border border-[#2A2E3D] p-3 sm:p-6"
       >
-        <h2 className="text-lg font-bold mb-4">Lista Cheltuieli</h2>
+        <h2 className="text-base sm:text-lg font-bold mb-4">Lista Cheltuieli</h2>
         <TransactionList
           transactions={monthExpenses}
           type="expense"

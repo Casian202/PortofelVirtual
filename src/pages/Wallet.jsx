@@ -213,10 +213,10 @@ export default function WalletPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.4 }}
-        className="rounded-2xl bg-[#1A1D29] border border-[#2A2E3D] p-6"
+        className="rounded-2xl bg-[#1A1D29] border border-[#2A2E3D] p-3 sm:p-6"
       >
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-bold">Evoluție Economii Cumulative</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-2">
+          <h2 className="text-base sm:text-lg font-bold">Evoluție Economii Cumulative</h2>
           <div className="flex items-center gap-4 text-xs">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-amber-500" /> Cumulativ
@@ -263,9 +263,9 @@ export default function WalletPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.5 }}
-        className="rounded-2xl bg-[#1A1D29] border border-[#2A2E3D] p-6"
+        className="rounded-2xl bg-[#1A1D29] border border-[#2A2E3D] p-3 sm:p-6"
       >
-        <h2 className="text-lg font-bold mb-4">Detalii pe Luni</h2>
+        <h2 className="text-base sm:text-lg font-bold mb-4">Detalii pe Luni</h2>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

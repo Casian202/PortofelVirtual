@@ -40,12 +40,12 @@ export default function KpiCard({ title, value, icon: Icon, trend, trendLabel, c
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
-      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${c.bg} border ${c.border} p-6 shadow-xl ${c.shadow}`}
+      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${c.bg} border ${c.border} p-4 sm:p-6 shadow-xl ${c.shadow}`}
     >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-slate-400 font-medium mb-1">{title}</p>
-          <p className={`text-3xl font-bold tracking-tight ${c.value}`}>{value}</p>
+          <p className={`text-2xl sm:text-3xl font-bold tracking-tight ${c.value}`}>{value}</p>
           {trendLabel && (
             <p className="text-xs text-slate-500 mt-2">{trendLabel}</p>
           )}

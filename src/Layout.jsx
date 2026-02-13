@@ -328,7 +328,7 @@ export default function Layout({ children, currentPageName }) {
         </aside>
 
         {/* Main */}
-        <main className="flex-1 min-h-screen min-w-0">
+        <main className="flex-1 min-h-screen min-w-0 overflow-x-hidden">
           {/* Mobile header */}
           <div className="lg:hidden sticky top-0 z-30 bg-[#0F1117]/80 backdrop-blur-xl border-b border-[#2A2E3D] px-4 py-3 flex items-center justify-between">
             <button

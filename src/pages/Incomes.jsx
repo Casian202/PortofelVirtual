@@ -103,11 +103,11 @@ export default function Incomes() {
           </motion.h1>
           <p className="text-slate-500 text-sm mt-1">Gestionează veniturile lunare</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />
           <Button
             onClick={() => setShowForm(true)}
-            className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-medium h-10 px-4"
+            className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-medium h-10 px-4 whitespace-nowrap"
           >
             <Plus className="w-4 h-4 mr-2" />
             Adaugă Venit
@@ -139,9 +139,9 @@ export default function Incomes() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="rounded-2xl bg-[#1A1D29] border border-[#2A2E3D] p-6"
+        className="rounded-2xl bg-[#1A1D29] border border-[#2A2E3D] p-3 sm:p-6"
       >
-        <h2 className="text-lg font-bold mb-4">Lista Venituri</h2>
+        <h2 className="text-base sm:text-lg font-bold mb-4">Lista Venituri</h2>
         <TransactionList
           transactions={monthIncomes}
           type="income"

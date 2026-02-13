@@ -30,24 +30,24 @@ export default function TransactionList({ transactions, type, onDelete }) {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
             transition={{ duration: 0.3, delay: idx * 0.05 }}
-            className="group flex items-center justify-between p-4 rounded-xl bg-[#1A1D29] border border-[#2A2E3D] hover:border-[#3A3E4D] transition-all"
+            className="group flex items-center justify-between p-3 sm:p-4 rounded-xl bg-[#1A1D29] border border-[#2A2E3D] hover:border-[#3A3E4D] transition-all gap-2"
           >
-            <div className="flex items-center gap-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-base sm:text-lg shrink-0 ${
                 type === "income" ? "bg-emerald-500/10" : "bg-red-500/10"
               }`}>
                 {tx.category_name?.[0]?.toUpperCase() || "?"}
               </div>
-              <div>
-                <p className="font-medium text-sm text-slate-200">{tx.category_name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
+              <div className="min-w-0">
+                <p className="font-medium text-sm text-slate-200 truncate">{tx.category_name}</p>
+                <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-0.5">
                   <span className="text-xs text-slate-500">
                     {format(new Date(tx.date), "d MMM yyyy", { locale: ro })}
                   </span>
                   {tx.description && (
                     <>
-                      <span className="text-slate-600">·</span>
-                      <span className="text-xs text-slate-500 truncate max-w-[200px]">{tx.description}</span>
+                      <span className="text-slate-600 hidden sm:inline">·</span>
+                      <span className="text-xs text-slate-500 truncate max-w-[120px] sm:max-w-[200px] hidden sm:inline">{tx.description}</span>
                     </>
                   )}
                   {tx.is_recurring && (
@@ -55,15 +55,16 @@ export default function TransactionList({ transactions, type, onDelete }) {
                       <span className="text-slate-600">·</span>
                       <span className="inline-flex items-center gap-1 text-xs text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded-md">
                         <RefreshCw className="w-3 h-3" />
-                        Recurentă{tx.recurring_day ? ` (ziua ${tx.recurring_day})` : ''}
+                        <span className="hidden sm:inline">Recurentă{tx.recurring_day ? ` (ziua ${tx.recurring_day})` : ''}</span>
+                        <span className="sm:hidden">{tx.recurring_day ? `z${tx.recurring_day}` : 'R'}</span>
                       </span>
                     </>
                   )}
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className={`font-bold text-sm ${
+            <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+              <span className={`font-bold text-xs sm:text-sm whitespace-nowrap ${
                 type === "income" ? "text-emerald-400" : "text-red-400"
               }`}>
                 {type === "income" ? "+" : "-"}{formatCurrency(tx.amount)} {tx.currency || 'RON'}
@@ -72,7 +73,7 @@ export default function TransactionList({ transactions, type, onDelete }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => onDelete(tx.id)}
-                className="h-8 w-8 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
