@@ -261,7 +261,7 @@ export default function BudgetSettings() {
 
             <div>
               <Label className="text-slate-400 text-sm">Icon</Label>
-              <div className="grid grid-cols-10 gap-2 mt-2">
+              <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 mt-2">
                 {EMOJI_LIST.map((emoji) => (
                   <button
                     key={emoji}

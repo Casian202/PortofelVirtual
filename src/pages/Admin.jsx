@@ -291,7 +291,7 @@ export default function AdminPage() {
             <p className="text-slate-400 text-sm mb-4">
               Definește cursul valutar (cât valorează 1 unitate de valută străină în RON)
             </p>
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
               {rates.map((rate) => (
                 <Card key={rate.currency} className="bg-[#1A1D29] border-[#2A2E3D]">
                   <CardHeader className="pb-3">
