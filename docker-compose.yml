@@ -40,6 +40,32 @@ services:
       postgres:
         condition: service_healthy
 
+  fastapi:
+    build:
+      context: ./fastapi_app
+      dockerfile: Dockerfile
+    container_name: portofelvirtual-fastapi
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:portofel_virtual_secure_2024@postgres:5432/portofelvirtual
+      JWT_SECRET: portofel_virtual_jwt_secret_key_2024
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRE_DAYS: 7
+      FASTAPI_PORT: 8000
+      FASTAPI_HOST: 0.0.0.0
+      CORS_ORIGINS: http://localhost,http://localhost:8889,http://localhost:5173,http://localhost:3000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
   frontend:
     build:
       context: .
@@ -47,9 +73,10 @@ services:
     container_name: portofelvirtual-frontend
     restart: unless-stopped
     ports:
-      - "8888:80"
+      - "8889:80"
     depends_on:
       - backend
+      - fastapi
 
 volumes:
   postgres_data:
