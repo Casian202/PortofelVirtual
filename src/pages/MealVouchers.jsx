@@ -4,11 +4,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
-import { UtensilsCrossed, TrendingUp, TrendingDown, Wallet, Plus, Minus, Trash2, FileText } from "lucide-react";
+import { UtensilsCrossed, TrendingUp, TrendingDown, Wallet, Plus, Minus, Trash2, FileText, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { formatCurrency } from "@/lib/utils";
 import KpiCard from "../components/finance/KpiCard";
 import {
@@ -274,12 +275,15 @@ export default function MealVouchers() {
 
 // Meal Voucher Form Component
 function MealVoucherForm({ open, onOpenChange, type, categories, onSubmit, isSpendForm = false }) {
+  // For income (receive), default to recurring=true since meal vouchers come monthly
   const [formData, setFormData] = useState({
     category_id: "",
     category_name: "",
     amount: "",
     description: "",
     date: getRomaniaDate(),
+    is_recurring: type === "income", // Default true for receiving bonuri
+    recurring_day: 1, // Default to 1st of the month
   });
 
   // Auto-select category for spend form
@@ -293,6 +297,14 @@ function MealVoucherForm({ open, onOpenChange, type, categories, onSubmit, isSpe
     }
   }, [isSpendForm, categories, formData.category_id]);
 
+  // Reset recurring_day when is_recurring changes
+  useEffect(() => {
+    if (formData.is_recurring && !formData.recurring_day) {
+      const currentDate = new Date(formData.date);
+      setFormData(prev => ({ ...prev, recurring_day: currentDate.getDate() || 1 }));
+    }
+  }, [formData.is_recurring, formData.date, formData.recurring_day]);
+
   const handleSubmit = () => {
     if (!formData.category_name || !formData.amount) return;
 
@@ -304,6 +316,8 @@ function MealVoucherForm({ open, onOpenChange, type, categories, onSubmit, isSpe
       month: formData.date.slice(0, 7),
       currency: "RON",
       is_meal_voucher: true,
+      is_recurring: type === "income" ? formData.is_recurring : false,
+      recurring_day: type === "income" && formData.is_recurring ? formData.recurring_day : null,
     });
     setFormData({
       category_id: isSpendForm && categories.length > 0 ? categories[0].id : "",
@@ -311,6 +325,8 @@ function MealVoucherForm({ open, onOpenChange, type, categories, onSubmit, isSpe
       amount: "",
       description: "",
       date: getRomaniaDate(),
+      is_recurring: type === "income",
+      recurring_day: 1,
     });
     onOpenChange(false);
   };
@@ -392,6 +408,40 @@ function MealVoucherForm({ open, onOpenChange, type, categories, onSubmit, isSpe
               className="bg-[#0F1117] border-[#2A2E3D] text-white mt-1.5 rounded-xl h-11"
             />
           </div>
+
+          {/* Recurring switch - only for receive form (income) */}
+          {!isSpendForm && (
+            <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Repeat className="w-4 h-4 text-emerald-400" />
+                  <Label className="text-white text-sm font-medium">Recurent lunar</Label>
+                </div>
+                <Switch
+                  checked={formData.is_recurring}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_recurring: checked })}
+                  className="data-[state=checked]:bg-emerald-500"
+                />
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                Bonurile de masă se adaugă automat în fiecare lună
+              </p>
+
+              {formData.is_recurring && (
+                <div className="mt-3 pt-3 border-t border-emerald-500/20">
+                  <Label className="text-slate-400 text-xs">Ziua lunii pentru încasare (1-31)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="31"
+                    value={formData.recurring_day}
+                    onChange={(e) => setFormData({ ...formData, recurring_day: parseInt(e.target.value) || 1 })}
+                    className="bg-[#0F1117] border-[#2A2E3D] text-white mt-1 rounded-xl h-9 w-24 text-center"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <Label className="text-slate-400 text-sm">Descriere (opțional)</Label>

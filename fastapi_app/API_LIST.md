@@ -418,21 +418,31 @@ Returnează statistici pe categorii.
 
 Bonurile de masă reprezintă un beneficiu oferit de angajatori pentru hrană. Sistemul gestionează un **sold complet separat** pentru bonurile de masă, independent de veniturile și cheltuielile standard.
 
+### 📍 Unde se accesează în aplicație
+
+În aplicația web există un **meniu separat "Bonuri Masă"** în navigare, care conține:
+- **Buton "Primește Bonuri"** - pentru adăugare bonuri de masă (venit)
+- **Buton "Cheltuiește Bonuri"** - pentru cheltuirea bonurilor pe Alimente
+- **Istoric tranzacții** - toate tranzacțiile cu bonuri de masă
+- **Sold curent** - afișat și în Dashboard și în Portofel
+
 ### ⚠️ IMPORTANT: Separare Completă
 
 **Bonurile de masă NU se includ în:**
+- Meniul "Venituri" - bonurile NU sunt venituri normale
+- Meniul "Cheltuieli" - bonurile NU sunt cheltuieli normale
 - Total venituri din Dashboard
 - Total cheltuieli din Dashboard
 - Balanța lunară
 - Graficele de evoluție
 - Distribuția pe categorii standard
-- Listele de Venituri/Cheltuieli
 
 **Bonurile de masă au:**
-- Pagină dedicată în aplicație ("Bonuri Masă")
+- **Meniu dedicat**: "Bonuri Masă" în navigare
+- **Pagină dedicată** cu formulare separate
 - Sold propriu calculat separat
 - Istoric de tranzacții separat
-- Afișare în Dashboard doar ca sold curent
+- Afișare în Dashboard doar ca sold curent (card separat)
 
 ---
 
@@ -460,14 +470,18 @@ Returnează soldul curent de bonuri de masă.
 
 ### Reguli pentru Bonuri de Masă
 
-#### 1. Încasare Bonuri (Venit)
+#### 1. Primește Bonuri (Încasare)
+- Se face din **meniul "Bonuri Masă"** → buton "Primește Bonuri"
 - `type`: "income"
 - `is_meal_voucher`: true
 - `category_name`: Orice categorie de tip venit (ex: "Beneficii", "Bonuri de Masă")
 - `currency`: Întotdeauna "RON"
+- `is_recurring`: **Recomandat `true`** (bonurile vin lunar)
+- `recurring_day`: Ziua lunii când se primesc bonurile (1-31)
 - Adaugă la soldul de bonuri de masă
 
-#### 2. Cheltuire Bonuri (Cheltuială)
+#### 2. Cheltuiește Bonuri
+- Se face din **meniul "Bonuri Masă"** → buton "Cheltuiește Bonuri"
 - `type`: "expense"
 - `is_meal_voucher`: true
 - `category_name`: **DOAR "Alimente"** (obligatoriu!)
@@ -477,23 +491,31 @@ Returnează soldul curent de bonuri de masă.
 
 ---
 
-### Endpoint-uri pentru Tranzacții cu Bonuri
+### Endpoint-uri pentru Bonuri de Masă
 
-#### POST `/api/transactions` (cu is_meal_voucher: true)
+#### GET `/api/wallet/meal-vouchers` - Sold Bonuri
+Returnează soldul curent de bonuri de masă.
 
-**Exemplu - Încasare bonuri de masă:**
+#### POST `/api/transactions` - Primește Bonuri (cu is_meal_voucher: true)
+
+**Exemplu - Primește bonuri de masă (recurent lunar):**
 ```json
 {
   "amount": 200,
   "type": "income",
   "category_name": "Beneficii",
-  "description": "Bonuri de masă - luna ianuarie 2024",
+  "description": "Bonuri de masă - lunar",
   "date": "2024-01-15",
   "month": "2024-01",
   "currency": "RON",
-  "is_meal_voucher": true
+  "is_meal_voucher": true,
+  "is_recurring": true,
+  "recurring_day": 15
 }
 ```
+> ✅ Recomandat: Setează `is_recurring: true` și `recurring_day` pentru a adăuga automat bonurile în fiecare lună
+
+#### POST `/api/transactions` - Cheltuiește Bonuri (cu is_meal_voucher: true)
 
 **Exemplu - Cheltuire bonuri de masă:**
 ```json
@@ -530,17 +552,20 @@ const mealVoucherTransactions = transactions.filter(t => t.is_meal_voucher === t
 
 #### POST `/api/ai/transaction` (cu is_meal_voucher)
 
-**Primește bonuri de masă (AI):**
+**Primește bonuri de masă (AI - recomandat recurent):**
 ```json
 {
   "amount": 200,
   "type": "income",
   "category_name": "Beneficii",
   "description": "Bonuri de masă lunară",
-  "is_meal_voucher": true
+  "is_meal_voucher": true,
+  "is_recurring": true,
+  "recurring_day": 15
 }
 ```
 > Auto-completează `date`, `month`, `currency` dacă nu sunt specificate.
+> 💡 Setează `is_recurring: true` pentru a adăuga automat în fiecare lună!
 
 **Cheltuiește bonuri de masă (AI):**
 ```json
@@ -589,7 +614,8 @@ const mealVoucherTransactions = transactions.filter(t => t.is_meal_voucher === t
 ```json
 {
   "name": "meal_vouchers",
-  "description": "Gestionează bonurile de masă. Acestea sunt COMPLETE SEPARATE de venituri/cheltuieli normale. Soldul se calculează independent.",
+  "description": "Gestionează bonurile de masă din meniul separat 'Bonuri Masă'. Acestea sunt COMPLETE SEPARATE de venituri/cheltuieli normale - NU se folosesc endpoint-urile de venituri/cheltuieli standard, ci endpoint-urile dedicate cu is_meal_voucher=true. Soldul se calculează independent și apare doar în Dashboard ca card separat și în meniul 'Bonuri Masă'.",
+  "note_importanta": "Când utilizatorul menționează 'bonuri de masă', folosește TO-TDEAUNA is_meal_voucher=true. NU adăuga bonuri de masă ca venituri normale!",
   "actions": [
     {
       "name": "get_meal_voucher_balance",
@@ -603,31 +629,36 @@ const mealVoucherTransactions = transactions.filter(t => t.is_meal_voucher === t
     },
     {
       "name": "receive_meal_vouchers",
-      "description": "Primește/adaugă bonuri de masă (venit)",
+      "description": "Primește/adaugă bonuri de masă din meniul 'Bonuri Masă'. RECOMANDAT să fie recurent lunar!",
       "endpoint": "POST /api/ai/transaction",
       "parameters": {
         "amount": "Suma în RON (obligatoriu)",
+        "type": "income",
         "category_name": "Categorie venit (default: 'Beneficii')",
         "description": "Descriere opțională",
-        "is_meal_voucher": "TRUE (obligatoriu)"
+        "is_meal_voucher": "TRUE (obligatoriu - diferențiază de venituri normale)",
+        "is_recurring": "RECOMANDAT TRUE - bonurile vin lunar",
+        "recurring_day": "Ziua lunii (1-31) când se primesc bonurile"
       }
     },
     {
       "name": "spend_meal_vouchers",
-      "description": "Cheltuiește bonuri de masă pe mâncare. DOAR pentru categoria 'Alimente'!",
+      "description": "Cheltuiește bonuri de masă din meniul 'Bonuri Masă' pe mâncare. DOAR pentru categoria 'Alimente'!",
       "endpoint": "POST /api/ai/transaction",
       "parameters": {
         "amount": "Suma în RON (obligatoriu)",
-        "category_name": "TREBUIE să fie 'Alimente'",
+        "type": "expense",
+        "category_name": "TREBUIE să fie 'Alimente' - singura categorie permisă!",
         "description": "Descriere opțională (ex: 'Cumpărături supermarket')",
-        "is_meal_voucher": "TRUE (obligatoriu)",
-        "type": "expense"
+        "is_meal_voucher": "TRUE (obligatoriu - diferențiază de cheltuieli normale)"
       },
-      "validation": "Dacă category_name nu este 'Alimente', va returna eroare!"
+      "validation": "Dacă category_name nu este 'Alimente', va returna eroare 400!"
     }
   ]
 }
 ```
+
+> ⚠️ **pentru AI**: Când utilizatorul spune "am primit bonuri de masă" sau "vreau să cheltuiesc din bonuri", folosește MEREU `is_meal_voucher: true`. Nu adăuga bonuri de masă ca venituri normale!
 
 ---
 
@@ -640,7 +671,7 @@ AI: GET /api/wallet/meal-vouchers
 Response: "Aveți 350 RON în bonuri de masă disponibile."
 ```
 
-**Exemplu 2: Primește bonuri**
+**Exemplu 2: Primește bonuri (recomandat recurent)**
 ```
 User: "Am primit 200 RON bonuri de masă pentru luna asta"
 AI: POST /api/ai/transaction
@@ -648,10 +679,12 @@ AI: POST /api/ai/transaction
   "amount": 200,
   "type": "income",
   "category_name": "Beneficii",
-  "description": "Bonuri de masă - luna curentă",
-  "is_meal_voucher": true
+  "description": "Bonuri de masă - lunar",
+  "is_meal_voucher": true,
+  "is_recurring": true,
+  "recurring_day": 15
 }
-Response: "Am înregistrat 200 RON bonuri de masă. Soldul dvs. este acum 550 RON."
+Response: "Am înregistrat 200 RON bonuri de masă, recurent lunar în data de 15. Soldul dvs. este acum 550 RON."
 ```
 
 **Exemplu 3: Cheltuiește bonuri**
