@@ -3,11 +3,16 @@ Database connection module for FastAPI application.
 Connects to the same PostgreSQL database as the Express backend.
 """
 import os
+import logging
 from typing import Optional, List, Any
 from contextlib import contextmanager
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2.pool import SimpleConnectionPool
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Database configuration from environment
 DATABASE_URL = os.getenv(
@@ -100,3 +105,80 @@ def execute_many(sql: str, params_list: List[tuple]) -> int:
             cur.executemany(sql, params_list)
             conn.commit()
             return cur.rowcount
+
+
+def run_migrations():
+    """
+    Run database migrations.
+    Checks and applies necessary schema updates.
+    """
+    logger.info("Running database migrations...")
+
+    migrations = [
+        # Migration 1: Add is_meal_voucher column to transactions table
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'transactions' AND column_name = 'is_meal_voucher'
+            ) THEN
+                ALTER TABLE transactions ADD COLUMN is_meal_voucher BOOLEAN DEFAULT false;
+                CREATE INDEX IF NOT EXISTS idx_transactions_meal_voucher ON transactions(is_meal_voucher) WHERE is_meal_voucher = true;
+                RAISE NOTICE 'Added is_meal_voucher column to transactions table';
+            END IF;
+        END $$;
+        """,
+        # Migration 2: Ensure recurring_day column exists
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'transactions' AND column_name = 'recurring_day'
+            ) THEN
+                ALTER TABLE transactions ADD COLUMN recurring_day INTEGER;
+                RAISE NOTICE 'Added recurring_day column to transactions table';
+            END IF;
+        END $$;
+        """,
+        # Migration 3: Ensure recurring_group_id column exists
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'transactions' AND column_name = 'recurring_group_id'
+            ) THEN
+                ALTER TABLE transactions ADD COLUMN recurring_group_id UUID;
+                RAISE NOTICE 'Added recurring_group_id column to transactions table';
+            END IF;
+        END $$;
+        """,
+        # Migration 4: Ensure currency column exists
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'transactions' AND column_name = 'currency'
+            ) THEN
+                ALTER TABLE transactions ADD COLUMN currency VARCHAR(3) DEFAULT 'RON';
+                RAISE NOTICE 'Added currency column to transactions table';
+            END IF;
+        END $$;
+        """,
+    ]
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            for i, migration in enumerate(migrations, 1):
+                try:
+                    cur.execute(migration)
+                    conn.commit()
+                    logger.info(f"Migration {i} executed successfully")
+                except Exception as e:
+                    conn.rollback()
+                    logger.warning(f"Migration {i} skipped (may already exist): {e}")
+
+    logger.info("Database migrations completed")

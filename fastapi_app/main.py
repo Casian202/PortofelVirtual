@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import database and routes
-from database import init_pool
+from database import init_pool, run_migrations
 from routes import (
     auth_router,
     transactions_router,
@@ -37,8 +37,9 @@ from routes import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize database connection pool on startup."""
+    """Initialize database connection pool and run migrations on startup."""
     init_pool()
+    run_migrations()  # Run database migrations
     yield
     # Cleanup on shutdown (if needed)
 

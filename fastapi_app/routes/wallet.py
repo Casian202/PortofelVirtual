@@ -5,10 +5,10 @@ import uuid
 from datetime import date
 from typing import List, Optional
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from models import (
     WalletSummaryResponse, WalletBalance, MonthlySummary, MealVoucherBalance,
-    TransactionResponse, MessageResponse
+    TransactionResponse, MessageResponse, MealVoucherReceiveRequest, MealVoucherSpendRequest
 )
 from auth import get_current_user, User
 from database import query, query_one, execute
@@ -269,10 +269,7 @@ async def get_meal_voucher_balance(current_user: User = Depends(get_current_user
 
 @router.post("/meal-vouchers/receive", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)
 async def receive_meal_vouchers(
-    amount: Decimal,
-    description: Optional[str] = None,
-    transaction_date: Optional[date] = None,
-    is_recurring: bool = True,
+    request: MealVoucherReceiveRequest,
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -281,14 +278,14 @@ async def receive_meal_vouchers(
     Automatically sets is_meal_voucher=true and currency=RON.
     Defaults is_recurring=true since meal vouchers come monthly.
 
-    - **amount**: Amount of meal vouchers received (in RON)
+    Request body:
+    - **amount**: Amount of meal vouchers received (in RON) - required
     - **description**: Optional description (e.g., "Bonuri de masă Februarie 2026")
     - **transaction_date**: Date of receipt (defaults to today)
     - **is_recurring**: Whether this is a recurring monthly income (default: true)
     """
     # Use today's date if not provided
-    if transaction_date is None:
-        transaction_date = date.today()
+    transaction_date = request.transaction_date or date.today()
 
     # Calculate month from date
     month = transaction_date.strftime("%Y-%m")
@@ -304,7 +301,7 @@ async def receive_meal_vouchers(
 
     # Generate recurring_group_id for recurring transactions
     recurring_group_id = None
-    if is_recurring:
+    if request.is_recurring:
         recurring_group_id = str(uuid.uuid4())
 
     result = execute(
@@ -317,15 +314,15 @@ async def receive_meal_vouchers(
         """,
         (
             transaction_id,
-            amount,
+            request.amount,
             "income",
             category_id,
             "Bonuri de masă",
-            description,
+            request.description,
             transaction_date,
             month,
             "RON",
-            is_recurring,
+            request.is_recurring,
             recurring_group_id,
             transaction_date.day,
             True,  # is_meal_voucher
@@ -338,9 +335,7 @@ async def receive_meal_vouchers(
 
 @router.post("/meal-vouchers/spend", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)
 async def spend_meal_vouchers(
-    amount: Decimal,
-    description: Optional[str] = None,
-    transaction_date: Optional[date] = None,
+    request: MealVoucherSpendRequest,
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -349,13 +344,13 @@ async def spend_meal_vouchers(
     Automatically sets category_name="Alimente", is_meal_voucher=true, currency=RON.
     Validates that sufficient meal voucher balance is available.
 
-    - **amount**: Amount to spend (in RON)
+    Request body:
+    - **amount**: Amount to spend (in RON) - required
     - **description**: Optional description (e.g., "Prânz restaurant")
     - **transaction_date**: Date of spending (defaults to today)
     """
     # Use today's date if not provided
-    if transaction_date is None:
-        transaction_date = date.today()
+    transaction_date = request.transaction_date or date.today()
 
     # Calculate month from date
     month = transaction_date.strftime("%Y-%m")
@@ -376,10 +371,10 @@ async def spend_meal_vouchers(
     total_expense = Decimal(str(balance_result[0]["total_expense"])) if balance_result else Decimal("0")
     current_balance = total_income - total_expense
 
-    if amount > current_balance:
+    if request.amount > current_balance:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Insufficient meal voucher balance. Available: {current_balance} RON, Requested: {amount} RON"
+            detail=f"Sold insuficient de bonuri de masă. Disponibil: {current_balance} RON, Solicitat: {request.amount} RON"
         )
 
     # Find or create "Alimente" category
@@ -401,11 +396,11 @@ async def spend_meal_vouchers(
         """,
         (
             transaction_id,
-            amount,
+            request.amount,
             "expense",
             category_id,
             "Alimente",
-            description,
+            request.description,
             transaction_date,
             month,
             "RON",

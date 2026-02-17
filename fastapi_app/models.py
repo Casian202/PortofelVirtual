@@ -169,6 +169,21 @@ class MealVoucherTransaction(BaseModel):
     recurring_day: Optional[int] = Field(default=15, ge=1, le=31, description="Day of month for recurring")
 
 
+class MealVoucherReceiveRequest(BaseModel):
+    """Request model for receiving meal vouchers."""
+    amount: Decimal = Field(..., gt=0, description="Amount in RON")
+    description: Optional[str] = Field(None, description="Optional description")
+    transaction_date: Optional[date] = Field(None, description="Date of receipt (defaults to today)")
+    is_recurring: bool = Field(default=True, description="Whether this is a recurring monthly income")
+
+
+class MealVoucherSpendRequest(BaseModel):
+    """Request model for spending meal vouchers."""
+    amount: Decimal = Field(..., gt=0, description="Amount in RON")
+    description: Optional[str] = Field(None, description="Optional description")
+    transaction_date: Optional[date] = Field(None, description="Date of spending (defaults to today)")
+
+
 class MealVoucherResponse(TransactionResponse):
     """Response model for meal voucher transactions."""
     pass
