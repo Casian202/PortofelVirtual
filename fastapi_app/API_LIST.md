@@ -1,3 +1,7 @@
+Resume this session with:                                                            
+claude --resume 54f96a30-0420-4e13-9151-820f42474f34                                 
+PS C:\Users\casy_\Desktop\Buget>                     
+
 # API Documentation - PortofelVirtual FastAPI
 
 Această documentație descrie toate endpoint-urile API disponibile pentru integrarea cu OpenWebUI și alți clienți.
@@ -438,18 +442,22 @@ Returnează soldul curent de bonuri de masă.
 #### POST `/api/wallet/meal-vouchers/receive`
 Primește/adaugă bonuri de masă la sold.
 
-**Query Parameters:**
-| Parametru | Tip | Obligatoriu | Descriere |
-|-----------|-----|-------------|-----------|
-| `amount` | Decimal | Da | Suma în RON |
-| `description` | String | Nu | Descriere opțională |
-| `transaction_date` | Date | Nu | Data primirii (default: azi) |
-| `is_recurring` | Boolean | Nu | Setează `true` pentru bonuri lunare (default: true) |
+**Request Body (JSON):**
+```json
+{
+  "amount": 200.00,
+  "description": "Bonuri de masă Februarie 2026",
+  "transaction_date": "2026-02-15",
+  "is_recurring": true
+}
+```
 
-**Exemplu:**
-```
-POST /api/wallet/meal-vouchers/receive?amount=200&description=Bonuri%20Februarie
-```
+| Câmp | Tip | Obligatoriu | Descriere |
+|------|-----|-------------|-----------|
+| `amount` | Decimal | Da | Suma în RON (trebuie să fie > 0) |
+| `description` | String | Nu | Descriere opțională |
+| `transaction_date` | Date | Nu | Data primirii (default: data curentă) |
+| `is_recurring` | Boolean | Nu | Setează `true` pentru bonuri lunare (default: true) |
 
 **Response:**
 ```json
@@ -458,11 +466,14 @@ POST /api/wallet/meal-vouchers/receive?amount=200&description=Bonuri%20Februarie
   "amount": 200.00,
   "type": "income",
   "category_name": "Bonuri de masă",
-  "description": "Bonuri Februarie",
-  "date": "2024-02-15",
+  "description": "Bonuri de masă Februarie 2026",
+  "date": "2026-02-15",
+  "month": "2026-02",
   "currency": "RON",
   "is_recurring": true,
-  "created_at": "2024-02-15T10:30:00Z"
+  "recurring_day": 15,
+  "is_meal_voucher": true,
+  "created_date": "2026-02-15T10:30:00Z"
 }
 ```
 
@@ -473,17 +484,20 @@ POST /api/wallet/meal-vouchers/receive?amount=200&description=Bonuri%20Februarie
 #### POST `/api/wallet/meal-vouchers/spend`
 Cheltuiește bonuri de masă. **DOAR pentru categoria "Alimente"!**
 
-**Query Parameters:**
-| Parametru | Tip | Obligatoriu | Descriere |
-|-----------|-----|-------------|-----------|
-| `amount` | Decimal | Da | Suma în RON |
-| `description` | String | Nu | Descriere opțională |
-| `transaction_date` | Date | Nu | Data cheltuielii (default: azi) |
+**Request Body (JSON):**
+```json
+{
+  "amount": 50.00,
+  "description": "Prânz restaurant",
+  "transaction_date": "2026-02-20"
+}
+```
 
-**Exemplu:**
-```
-POST /api/wallet/meal-vouchers/spend?amount=50&description=Prânz%20restaurant
-```
+| Câmp | Tip | Obligatoriu | Descriere |
+|------|-----|-------------|-----------|
+| `amount` | Decimal | Da | Suma în RON (trebuie să fie > 0) |
+| `description` | String | Nu | Descriere opțională |
+| `transaction_date` | Date | Nu | Data cheltuielii (default: data curentă) |
 
 **Response:**
 ```json
