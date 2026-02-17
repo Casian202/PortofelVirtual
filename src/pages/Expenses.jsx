@@ -81,7 +81,7 @@ export default function Expenses() {
   });
 
   const expenseCategories = categories.filter((c) => c.type === "expense" && c.is_active !== false);
-  const monthExpenses = transactions.filter((t) => t.type === "expense" && t.month === currentMonth);
+  const monthExpenses = transactions.filter((t) => t.type === "expense" && !t.is_meal_voucher && t.month === currentMonth);
 
   // Group totals by currency - only currencies that have transactions
   const totalsByCurrency = {};

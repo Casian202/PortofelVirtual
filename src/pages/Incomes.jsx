@@ -80,7 +80,7 @@ export default function Incomes() {
   });
 
   const incomeCategories = categories.filter((c) => c.type === "income" && c.is_active !== false);
-  const monthIncomes = transactions.filter((t) => t.type === "income" && t.month === currentMonth);
+  const monthIncomes = transactions.filter((t) => t.type === "income" && !t.is_meal_voucher && t.month === currentMonth);
 
   // Group totals by currency - only currencies that have transactions
   const totalsByCurrency = {};

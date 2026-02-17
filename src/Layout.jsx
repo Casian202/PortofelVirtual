@@ -16,7 +16,8 @@ import {
   Shield,
   ChevronsLeft,
   ChevronsRight,
-  X
+  X,
+  UtensilsCrossed
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +49,7 @@ export default function Layout({ children, currentPageName }) {
     { name: "Venituri", page: "Incomes", icon: TrendingUp },
     { name: "Cheltuieli", page: "Expenses", icon: TrendingDown },
     { name: "Portofel", page: "Wallet", icon: Wallet },
+    { name: "Bonuri Masă", page: "MealVouchers", icon: UtensilsCrossed },
     { name: "Investiții", page: "Investments", icon: PieChart },
     { name: "Obiective", page: "Goals", icon: Target },
     ...(user?.role === 'admin' ? [

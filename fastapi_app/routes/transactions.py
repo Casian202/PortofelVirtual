@@ -13,6 +13,9 @@ from models import (
 from auth import get_current_user, User
 from database import query, query_one, execute
 
+# Valid food category names for meal voucher expenses (case-insensitive)
+FOOD_CATEGORIES = ['alimente', 'food', 'mâncare', 'mancare']
+
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
 
@@ -35,7 +38,7 @@ async def list_transactions(
     """
     sql = """
         SELECT id, amount, type, category_id, category_name, description, date, month,
-               currency, is_recurring, recurring_group_id, recurring_day, created_by,
+               currency, is_recurring, recurring_group_id, recurring_day, is_meal_voucher, created_by,
                created_date, updated_date
         FROM transactions
         WHERE created_by = %s
@@ -70,7 +73,7 @@ async def get_transaction(
     transaction = query_one(
         """
         SELECT id, amount, type, category_id, category_name, description, date, month,
-               currency, is_recurring, recurring_group_id, recurring_day, created_by,
+               currency, is_recurring, recurring_group_id, recurring_day, is_meal_voucher, created_by,
                created_date, updated_date
         FROM transactions
         WHERE id = %s AND created_by = %s
@@ -103,6 +106,16 @@ async def create_transaction(
     - **is_recurring**: Set true for monthly recurring transactions
     - **recurring_day**: Day of month for recurring (1-31)
     """
+    # Validate meal voucher expenses - can only be for food categories
+    is_meal_voucher = getattr(transaction, 'is_meal_voucher', False) or False
+    if is_meal_voucher and transaction.type == TransactionType.EXPENSE:
+        food_categories = ['alimente', 'food', 'mâncare', 'mancare']
+        if transaction.category_name.lower() not in food_categories:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bonurile de masă pot fi cheltuite doar pe categoria Alimente (mâncare și produse alimentare)"
+            )
+
     # Find or create category
     category = query_one(
         "SELECT id FROM budget_categories WHERE name = %s AND created_by = %s",
@@ -121,8 +134,8 @@ async def create_transaction(
         """
         INSERT INTO transactions (
             id, amount, type, category_id, category_name, description, date, month,
-            currency, is_recurring, recurring_group_id, recurring_day, created_by
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            currency, is_recurring, recurring_group_id, recurring_day, is_meal_voucher, created_by
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING *
         """,
         (
@@ -138,6 +151,7 @@ async def create_transaction(
             transaction.is_recurring,
             recurring_group_id,
             transaction.recurring_day,
+            is_meal_voucher,
             current_user.id
         )
     )
@@ -165,6 +179,20 @@ async def update_transaction(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Transaction not found"
         )
+
+    # Validate meal voucher expenses - can only be for food categories
+    # Check if is_meal_voucher is being set to True or is already True
+    will_be_meal_voucher = transaction.is_meal_voucher if transaction.is_meal_voucher is not None else existing.get('is_meal_voucher', False)
+    effective_type = transaction.type.value if transaction.type is not None else existing['type']
+    effective_category = transaction.category_name if transaction.category_name is not None else existing['category_name']
+
+    if will_be_meal_voucher and effective_type == 'expense':
+        food_categories = ['alimente', 'food', 'mâncare', 'mancare']
+        if effective_category.lower() not in food_categories:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Bonurile de masă pot fi cheltuite doar pe categoria Alimente (mâncare și produse alimentare)"
+            )
 
     # Build update query dynamically
     updates = []
@@ -213,6 +241,10 @@ async def update_transaction(
     if transaction.recurring_day is not None:
         updates.append("recurring_day = %s")
         params.append(transaction.recurring_day)
+
+    if transaction.is_meal_voucher is not None:
+        updates.append("is_meal_voucher = %s")
+        params.append(transaction.is_meal_voucher)
 
     if not updates:
         return TransactionResponse(**existing)

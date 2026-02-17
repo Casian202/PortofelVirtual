@@ -11,6 +11,7 @@ import Goals from './pages/Goals';
 import Wallet from './pages/Wallet';
 import Admin from './pages/Admin';
 import ExchangeRates from './pages/ExchangeRates';
+import MealVouchers from './pages/MealVouchers';
 import __Layout from './Layout.jsx';
 
 
@@ -24,6 +25,7 @@ export const PAGES = {
     "BudgetSettings": BudgetSettings,
     "Investments": Investments,
     "Goals": Goals,
+    "MealVouchers": MealVouchers,
 }
 
 export const pagesConfig = {

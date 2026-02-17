@@ -30,6 +30,13 @@ export default function KpiCard({ title, value, icon: Icon, trend, trendLabel, c
       icon: "bg-amber-500/15 text-amber-400",
       shadow: "shadow-amber-500/5",
       value: "text-amber-400"
+    },
+    purple: {
+      bg: "from-purple-500/10 to-purple-500/5",
+      border: "border-purple-500/20",
+      icon: "bg-purple-500/15 text-purple-400",
+      shadow: "shadow-purple-500/5",
+      value: "text-purple-400"
     }
   };
 

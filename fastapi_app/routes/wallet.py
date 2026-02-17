@@ -4,7 +4,7 @@ Wallet and summary routes.
 from typing import List
 from decimal import Decimal
 from fastapi import APIRouter, Depends
-from models import WalletSummaryResponse, WalletBalance, MonthlySummary
+from models import WalletSummaryResponse, WalletBalance, MonthlySummary, MealVoucherBalance
 from auth import get_current_user, User
 from database import query
 
@@ -223,3 +223,40 @@ async def get_category_stats(
     )
 
     return stats
+
+
+@router.get("/meal-vouchers", response_model=MealVoucherBalance)
+async def get_meal_voucher_balance(current_user: User = Depends(get_current_user)):
+    """
+    Get meal voucher balance.
+
+    Returns total meal voucher income, expenses, and remaining balance.
+    Meal vouchers can only be spent on food category (Alimente).
+    """
+    result = query(
+        """
+        SELECT
+            COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as total_income,
+            COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_expense
+        FROM transactions
+        WHERE created_by = %s AND is_meal_voucher = true
+        """,
+        (current_user.id,)
+    )
+
+    if not result:
+        return MealVoucherBalance(
+            balance=Decimal("0"),
+            total_income=Decimal("0"),
+            total_expense=Decimal("0")
+        )
+
+    total_income = Decimal(str(result[0]["total_income"]))
+    total_expense = Decimal(str(result[0]["total_expense"]))
+    balance = total_income - total_expense
+
+    return MealVoucherBalance(
+        balance=balance,
+        total_income=total_income,
+        total_expense=total_expense
+    )

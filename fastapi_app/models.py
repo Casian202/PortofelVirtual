@@ -124,6 +124,7 @@ class TransactionBase(BaseModel):
     currency: Optional[str] = "RON"
     is_recurring: Optional[bool] = False
     recurring_day: Optional[int] = Field(None, ge=1, le=31, description="Day of month for recurring")
+    is_meal_voucher: Optional[bool] = False
 
 
 class TransactionCreate(TransactionBase):
@@ -143,6 +144,7 @@ class TransactionUpdate(BaseModel):
     currency: Optional[str] = None
     is_recurring: Optional[bool] = None
     recurring_day: Optional[int] = Field(None, ge=1, le=31)
+    is_meal_voucher: Optional[bool] = None
 
 
 class TransactionResponse(TransactionBase):
@@ -152,6 +154,7 @@ class TransactionResponse(TransactionBase):
     created_by: Optional[str] = None
     created_date: Optional[datetime] = None
     updated_date: Optional[datetime] = None
+    is_meal_voucher: bool = False
 
     class Config:
         from_attributes = True
@@ -301,6 +304,13 @@ class WalletSummaryResponse(BaseModel):
     total_balance_ron: Decimal
 
 
+class MealVoucherBalance(BaseModel):
+    """Meal voucher balance model."""
+    balance: Decimal
+    total_income: Decimal
+    total_expense: Decimal
+
+
 # ============================================
 # API RESPONSE WRAPPERS
 # ============================================
@@ -423,6 +433,7 @@ class AITransactionCreate(BaseModel):
     currency: str = Field(default="RON", description="Currency code (default: RON)")
     is_recurring: bool = Field(default=False, description="Is this a recurring monthly transaction?")
     recurring_day: Optional[int] = Field(None, ge=1, le=31, description="Day of month for recurring (1-31)")
+    is_meal_voucher: bool = Field(default=False, description="Is this a meal voucher transaction? Meal voucher expenses can only be for food category.")
 
     class Config:
         json_schema_extra = {

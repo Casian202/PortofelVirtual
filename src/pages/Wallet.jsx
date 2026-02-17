@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format, parse } from "date-fns";
 import { ro } from "date-fns/locale";
 import { motion } from "framer-motion";
-import { Wallet, TrendingUp, TrendingDown, Calendar, PiggyBank, DollarSign, ChevronLeft, ChevronRight, Coins } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, Calendar, PiggyBank, DollarSign, ChevronLeft, ChevronRight, Coins, UtensilsCrossed } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import KpiCard from "../components/finance/KpiCard";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,20 @@ export default function WalletPage() {
         }
       });
       if (!response.ok) throw new Error("Failed to fetch balance data");
+      return response.json();
+    },
+  });
+
+  const { data: mealVoucherData } = useQuery({
+    queryKey: ["meal-voucher-balance"],
+    queryFn: async () => {
+      const token = localStorage.getItem("auth_token");
+      const response = await fetch("/api/wallet/meal-vouchers", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error("Failed to fetch meal voucher data");
       return response.json();
     },
   });
@@ -181,6 +195,38 @@ export default function WalletPage() {
           })}
         </div>
       </motion.div>
+
+      {/* Meal Vouchers Section */}
+      {mealVoucherData && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.25 }}
+        >
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <UtensilsCrossed className="w-5 h-5 text-purple-400" />
+            Bonuri de Masă
+          </h2>
+          <Card className="bg-[#1A1D29] border-[#2A2E3D] max-w-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-slate-400 flex items-center gap-2">
+                <UtensilsCrossed className="w-4 h-4 text-purple-400" />
+                Sold Bonuri de Masă
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline justify-between">
+                <span className={`text-2xl font-bold ${
+                  (mealVoucherData.balance || 0) >= 0 ? "text-purple-400" : "text-red-400"
+                }`}>
+                  {formatCurrency(mealVoucherData.balance || 0)}
+                </span>
+                <span className="text-xl text-slate-500">RON</span>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Currency Selector for Cumulative View */}
       <div className="flex flex-col gap-2">

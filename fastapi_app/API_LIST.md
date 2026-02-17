@@ -10,23 +10,32 @@ Această documentație descrie toate endpoint-urile API disponibile pentru integ
 4. [Investiții](#4-investiții)
 5. [Obiective de Economisire](#5-obiective-de-economisire)
 6. [Portofel și Sumar](#6-portofel-și-sumar)
-7. [Cursuri de Schimb](#7-cursuri-de-schimb)
-8. [Administrație](#8-administrație)
-9. [Endpoint-uri pentru AI (OpenWebUI)](#9-endpoint-uri-pentru-ai-openwebui)
-10. [Structura Bazei de Date](#10-structura-bazei-de-date)
+7. [Bonuri de Masă](#7-bonuri-de-masă)
+8. [Cursuri de Schimb](#8-cursuri-de-schimb)
+9. [Administrație](#9-administrație)
+10. [API Keys](#10-api-keys-autentificare-pentru-ai)
+11. [Endpoint-uri pentru AI (OpenWebUI)](#11-endpoint-uri-pentru-ai-openwebui)
+12. [Structura Bazei de Date](#12-structura-bazei-de-date)
 
 ---
 
 ## Autentificare
 
-Toate endpoint-urile (exceptând `/api/auth/login` și `/api/health`) necesită autentificare JWT.
+Toate endpoint-urile (exceptând `/api/auth/login` și `/api/health`) necesită autentificare.
 
-**Header necesar:**
+**Metode de autentificare:**
+
+### 1. JWT Token
 ```
 Authorization: Bearer <token>
 ```
-
 Token-ul se obține prin endpoint-ul de login.
+
+### 2. API Key (recomandat pentru AI/OpenWebUI)
+```
+X-API-Key: pv_<your_api_key>
+```
+API Key-urile se generează din endpoint-ul `/api/api-keys`.
 
 ---
 
@@ -75,6 +84,60 @@ Schimbă parola utilizatorului.
 
 ---
 
+## 1.5. API Keys (pentru integrări AI)
+
+### GET `/api/api-keys`
+Listează toate API key-urile utilizatorului curent.
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "name": "OpenWebUI Key",
+    "key": "pv_abc123...",
+    "created_at": "2024-01-15T00:00:00Z",
+    "last_used_at": "2024-01-20T10:30:00Z"
+  }
+]
+```
+
+### POST `/api/api-keys`
+Creează un nou API key.
+
+**Query Parameters:**
+- `name` - Numele key-ului (opțional, default: "API Key")
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "name": "OpenWebUI Key",
+  "key": "pv_abcdefghijklmnopqrstuvwxyz1234567890",
+  "created_at": "2024-01-15T00:00:00Z",
+  "last_used_at": null
+}
+```
+
+⚠️ **Important**: Salvează key-ul imediat! Nu va mai fi afișat complet niciodată.
+
+### DELETE `/api/api-keys/{key_id}`
+Șterge (revocă) un API key.
+
+### POST `/api/api-keys/{key_id}/deactivate`
+Dezactivează un API key fără a-l șterge.
+
+### Utilizare API Key
+
+Include key-ul în header-ul `X-API-Key`:
+
+```bash
+curl -X GET "http://localhost:9000/api/ai/data" \
+  -H "X-API-Key: pv_abcdefghijklmnopqrstuvwxyz1234567890"
+```
+
+---
+
 ## 2. Tranzacții
 
 ### GET `/api/transactions`
@@ -107,11 +170,18 @@ Creează o tranzacție nouă.
   "month": "2024-01",
   "currency": "RON",
   "is_recurring": false,
-  "recurring_day": null
+  "recurring_day": null,
+  "is_meal_voucher": false
 }
 ```
 
 **Câmpuri obligatorii:** `amount`, `type`, `category_name`, `date`, `month`
+
+**Câmpul `is_meal_voucher`:**
+- `true` pentru tranzacții cu bonuri de masă
+- Pentru venituri (`type: "income"`): adaugă la soldul de bonuri de masă
+- Pentru cheltuieli (`type: "expense"`): poate fi folosit DOAR pentru categoria "Alimente"
+- Validare: backend-ul returnează eroare dacă `is_meal_voucher: true` și categoria nu este "Alimente" pentru cheltuieli
 
 ### PUT `/api/transactions/{id}`
 Actualizează o tranzacție existentă.
@@ -344,7 +414,277 @@ Returnează statistici pe categorii.
 
 ---
 
-## 7. Cursuri de Schimb
+## 7. Bonuri de Masă
+
+Bonurile de masă reprezintă un beneficiu oferit de angajatori pentru hrană. Sistemul gestionează un **sold complet separat** pentru bonurile de masă, independent de veniturile și cheltuielile standard.
+
+### ⚠️ IMPORTANT: Separare Completă
+
+**Bonurile de masă NU se includ în:**
+- Total venituri din Dashboard
+- Total cheltuieli din Dashboard
+- Balanța lunară
+- Graficele de evoluție
+- Distribuția pe categorii standard
+- Listele de Venituri/Cheltuieli
+
+**Bonurile de masă au:**
+- Pagină dedicată în aplicație ("Bonuri Masă")
+- Sold propriu calculat separat
+- Istoric de tranzacții separat
+- Afișare în Dashboard doar ca sold curent
+
+---
+
+### GET `/api/wallet/meal-vouchers`
+
+Returnează soldul curent de bonuri de masă.
+
+**Response:**
+```json
+{
+  "balance": 350.00,
+  "total_income": 500.00,
+  "total_expense": 150.00
+}
+```
+
+**Câmpuri:**
+| Câmp | Tip | Descriere |
+|------|-----|-----------|
+| `balance` | Decimal | Soldul curent (total_income - total_expense) |
+| `total_income` | Decimal | Total bonuri de masă încasate (RON) |
+| `total_expense` | Decimal | Total bonuri de masă cheltuite (RON) |
+
+---
+
+### Reguli pentru Bonuri de Masă
+
+#### 1. Încasare Bonuri (Venit)
+- `type`: "income"
+- `is_meal_voucher`: true
+- `category_name`: Orice categorie de tip venit (ex: "Beneficii", "Bonuri de Masă")
+- `currency`: Întotdeauna "RON"
+- Adaugă la soldul de bonuri de masă
+
+#### 2. Cheltuire Bonuri (Cheltuială)
+- `type`: "expense"
+- `is_meal_voucher`: true
+- `category_name`: **DOAR "Alimente"** (obligatoriu!)
+- `currency`: Întotdeauna "RON"
+- Scade din soldul de bonuri de masă
+- **Validare backend**: Returnează eroare 400 dacă categoria nu este "Alimente"
+
+---
+
+### Endpoint-uri pentru Tranzacții cu Bonuri
+
+#### POST `/api/transactions` (cu is_meal_voucher: true)
+
+**Exemplu - Încasare bonuri de masă:**
+```json
+{
+  "amount": 200,
+  "type": "income",
+  "category_name": "Beneficii",
+  "description": "Bonuri de masă - luna ianuarie 2024",
+  "date": "2024-01-15",
+  "month": "2024-01",
+  "currency": "RON",
+  "is_meal_voucher": true
+}
+```
+
+**Exemplu - Cheltuire bonuri de masă:**
+```json
+{
+  "amount": 50,
+  "type": "expense",
+  "category_name": "Alimente",
+  "description": "Cumpărături alimentare de la supermarket",
+  "date": "2024-01-20",
+  "month": "2024-01",
+  "currency": "RON",
+  "is_meal_voucher": true
+}
+```
+
+**Eroare de validare (categoria greșită):**
+```json
+{
+  "detail": "Bonurile de masă pot fi cheltuite doar pe categoria Alimente (mâncare și produse alimentare)"
+}
+```
+
+#### GET `/api/transactions` (filtrare bonuri de masă)
+
+Pentru a obține doar tranzacțiile cu bonuri de masă, filtrează în client după `is_meal_voucher: true`:
+```javascript
+// Exemplu filtrare
+const mealVoucherTransactions = transactions.filter(t => t.is_meal_voucher === true);
+```
+
+---
+
+### Endpoint-uri AI pentru Bonuri de Masă
+
+#### POST `/api/ai/transaction` (cu is_meal_voucher)
+
+**Primește bonuri de masă (AI):**
+```json
+{
+  "amount": 200,
+  "type": "income",
+  "category_name": "Beneficii",
+  "description": "Bonuri de masă lunară",
+  "is_meal_voucher": true
+}
+```
+> Auto-completează `date`, `month`, `currency` dacă nu sunt specificate.
+
+**Cheltuiește bonuri de masă (AI):**
+```json
+{
+  "amount": 75,
+  "type": "expense",
+  "category_name": "Alimente",
+  "description": "Mâncare de la restaurant",
+  "is_meal_voucher": true
+}
+```
+
+---
+
+### Flux de Lucru pentru AI
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                BONURI DE MASĂ - FLUX AI                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  1. VERIFICĂ SOLD                                           │
+│     GET /api/wallet/meal-vouchers                           │
+│     → Returnează balance, total_income, total_expense       │
+│                                                             │
+│  2. PRIMEȘTE BONURI                                         │
+│     POST /api/ai/transaction                                │
+│     { type: "income", is_meal_voucher: true, ... }          │
+│     → Adaugă la sold                                        │
+│                                                             │
+│  3. CHELTUIEȘTE BONURI                                      │
+│     POST /api/ai/transaction                                │
+│     { type: "expense", category_name: "Alimente",           │
+│       is_meal_voucher: true, ... }                          │
+│     → Scade din sold                                        │
+│                                                             │
+│  ⚠️ VALIDARE: Expense cu bonuri → DOAR "Alimente"          │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Definiție Tool pentru AI (OpenWebUI)
+
+```json
+{
+  "name": "meal_vouchers",
+  "description": "Gestionează bonurile de masă. Acestea sunt COMPLETE SEPARATE de venituri/cheltuieli normale. Soldul se calculează independent.",
+  "actions": [
+    {
+      "name": "get_meal_voucher_balance",
+      "description": "Obține soldul curent de bonuri de masă",
+      "endpoint": "GET /api/wallet/meal-vouchers",
+      "returns": {
+        "balance": "Sold curent în RON",
+        "total_income": "Total bonuri încasate",
+        "total_expense": "Total bonuri cheltuite"
+      }
+    },
+    {
+      "name": "receive_meal_vouchers",
+      "description": "Primește/adaugă bonuri de masă (venit)",
+      "endpoint": "POST /api/ai/transaction",
+      "parameters": {
+        "amount": "Suma în RON (obligatoriu)",
+        "category_name": "Categorie venit (default: 'Beneficii')",
+        "description": "Descriere opțională",
+        "is_meal_voucher": "TRUE (obligatoriu)"
+      }
+    },
+    {
+      "name": "spend_meal_vouchers",
+      "description": "Cheltuiește bonuri de masă pe mâncare. DOAR pentru categoria 'Alimente'!",
+      "endpoint": "POST /api/ai/transaction",
+      "parameters": {
+        "amount": "Suma în RON (obligatoriu)",
+        "category_name": "TREBUIE să fie 'Alimente'",
+        "description": "Descriere opțională (ex: 'Cumpărături supermarket')",
+        "is_meal_voucher": "TRUE (obligatoriu)",
+        "type": "expense"
+      },
+      "validation": "Dacă category_name nu este 'Alimente', va returna eroare!"
+    }
+  ]
+}
+```
+
+---
+
+### Exemple de Utilizare AI
+
+**Exemplu 1: Verifică sold bonuri**
+```
+User: "Câte bonuri de masă am?"
+AI: GET /api/wallet/meal-vouchers
+Response: "Aveți 350 RON în bonuri de masă disponibile."
+```
+
+**Exemplu 2: Primește bonuri**
+```
+User: "Am primit 200 RON bonuri de masă pentru luna asta"
+AI: POST /api/ai/transaction
+{
+  "amount": 200,
+  "type": "income",
+  "category_name": "Beneficii",
+  "description": "Bonuri de masă - luna curentă",
+  "is_meal_voucher": true
+}
+Response: "Am înregistrat 200 RON bonuri de masă. Soldul dvs. este acum 550 RON."
+```
+
+**Exemplu 3: Cheltuiește bonuri**
+```
+User: "Am cheltuit 50 RON bonuri de masă la magazin"
+AI: POST /api/ai/transaction
+{
+  "amount": 50,
+  "type": "expense",
+  "category_name": "Alimente",
+  "description": "Cumpărături magazin",
+  "is_meal_voucher": true
+}
+Response: "Am înregistrat cheltuiala de 50 RON din bonurile de masă pe categoria Alimente. Sold rămas: 500 RON."
+```
+
+**Exemplu 4: Eroare validare**
+```
+User: "Vreau să cheltuiesc bonuri de masă pe benzină"
+AI: POST /api/ai/transaction
+{
+  "amount": 100,
+  "type": "expense",
+  "category_name": "Transport",
+  "is_meal_voucher": true
+}
+Response Error: "Bonurile de masă pot fi cheltuite doar pe categoria Alimente!"
+AI: "Bonurile de masă pot fi folosite doar pentru mâncare și alimente. Nu pot fi cheltuite pe Transport. Doriți să înregistrez această cheltuială ca tranzacție normală în loc de bonuri de masă?"
+```
+
+---
+
+## 8. Cursuri de Schimb
 
 ### GET `/api/exchange-rates`
 Listează toate cursurile de schimb.
@@ -386,7 +726,7 @@ Actualizează un curs de schimb existent.
 
 ---
 
-## 8. Administrație (doar admin)
+## 9. Administrație (doar admin)
 
 ### GET `/api/admin/users`
 Listează toți utilizatorii.
@@ -414,7 +754,54 @@ Schimbă rolul unui utilizator.
 
 ---
 
-## 9. Endpoint-uri pentru AI (OpenWebUI)
+## 9. API Keys (Autentificare pentru AI)
+
+API Keys permit autentificarea fără JWT, ideale pentru integrări cu AI (OpenWebUI) și automatizări.
+
+### GET `/api/api-keys`
+Listează toate API key-urile utilizatorului curent.
+
+**Response:**
+```json
+[
+  {
+    "id": "uuid",
+    "name": "OpenWebUI Key",
+    "key": "pv_abc123...",
+    "created_at": "2024-01-15T00:00:00Z",
+    "last_used_at": "2024-01-20T10:30:00Z"
+  }
+]
+```
+
+### POST `/api/api-keys`
+Creează un nou API key.
+
+**Query Parameters:**
+- `name` - Numele key-ului (opțional, default: "API Key")
+
+**Response:**
+```json
+{
+  "id": "uuid",
+  "name": "OpenWebUI Key",
+  "key": "pv_xK9mN2pL8qR4tY6wZ1vB3cD5fG7hJ0kM",
+  "created_at": "2024-01-15T00:00:00Z",
+  "last_used_at": null
+}
+```
+
+⚠️ **Important**: Key-ul complet este afișat doar la creare! Salvați-l sigur.
+
+### DELETE `/api/api-keys/{id}`
+Șterge un API key.
+
+### POST `/api/api-keys/{id}/deactivate`
+Dezactivează un API key fără a-l șterge.
+
+---
+
+## 10. Endpoint-uri pentru AI (OpenWebUI)
 
 Aceste endpoint-uri sunt special concepute pentru a fi ușor de utilizat de către asistenții AI.
 
@@ -500,7 +887,7 @@ Creează o tranzacție cu input simplificat. Ideal pentru AI!
 - Auto-generează `month` din dată
 - Creează automat categoria dacă nu există
 
-**Request Body:**
+**Request Body standard:**
 ```json
 {
   "amount": 150.50,
@@ -522,6 +909,37 @@ Creează o tranzacție cu input simplificat. Ideal pentru AI!
   "recurring_day": 1
 }
 ```
+
+---
+
+#### 🍽️ Bonuri de Masă cu AI
+
+**Primește bonuri de masă (încasare):**
+```json
+{
+  "amount": 200,
+  "type": "income",
+  "category_name": "Beneficii",
+  "description": "Bonuri de masă - luna curentă",
+  "is_meal_voucher": true
+}
+```
+> ✅ Adaugă la soldul separat de bonuri de masă
+> ✅ Nu apare în veniturile standard
+
+**Cheltuiește bonuri de masă:**
+```json
+{
+  "amount": 50,
+  "type": "expense",
+  "category_name": "Alimente",
+  "description": "Cumpărături alimentare",
+  "is_meal_voucher": true
+}
+```
+> ⚠️ `category_name` TREBUIE să fie "Alimente" pentru cheltuieli cu bonuri!
+> ✅ Scade din soldul de bonuri de masă
+> ✅ Nu apare în cheltuielile standard
 
 ### POST `/api/ai/goal`
 Creează un obiectiv de economisire cu input simplificat.
@@ -580,7 +998,7 @@ Returnează sugestii de categorii pentru AI.
 
 ---
 
-## 10. Structura Bazei de Date
+## 11. Structura Bazei de Date
 
 ### Tabelul `users`
 | Coloană | Tip | Descriere |
@@ -622,6 +1040,7 @@ Returnează sugestii de categorii pentru AI.
 | `is_recurring` | BOOLEAN | Este recurentă |
 | `recurring_group_id` | UUID | ID grup pentru recurente |
 | `recurring_day` | INTEGER | Ziua lunii pentru recurentă |
+| `is_meal_voucher` | BOOLEAN | Este tranzacție cu bonuri de masă |
 | `created_by` | UUID | FK către users |
 | `created_date` | TIMESTAMP | Data creării |
 | `updated_date` | TIMESTAMP | Data ultimei actualizări |
@@ -665,6 +1084,17 @@ Returnează sugestii de categorii pentru AI.
 | `updated_at` | TIMESTAMP | Data actualizării |
 | `updated_by` | UUID | FK către users |
 
+### Tabelul `api_keys`
+| Coloană | Tip | Descriere |
+|---------|-----|-----------|
+| `id` | UUID | Primary key |
+| `user_id` | UUID | FK către users |
+| `name` | VARCHAR(255) | Numele key-ului |
+| `key` | VARCHAR(255) | API key (format: `pv_...`) |
+| `is_active` | BOOLEAN | Este activ |
+| `created_at` | TIMESTAMP | Data creării |
+| `last_used_at` | TIMESTAMP | Ultima utilizare |
+
 ---
 
 ## Configurare și Rulare
@@ -681,8 +1111,8 @@ docker compose up --build
 Aceasta va porni toate serviciile:
 - **PostgreSQL** (port 5433)
 - **Backend Express** (port 3001)
-- **FastAPI** (port 8000) ← NOU
-- **Frontend** (port 8888)
+- **FastAPI** (port 9000) ← NOU
+- **Frontend** (port 8889)
 
 ### Opțiunea 2: Rulare Locală (Dezvoltare)
 
@@ -701,7 +1131,7 @@ DATABASE_URL=postgresql://postgres:portofel_virtual_secure_2024@localhost:5433/p
 JWT_SECRET=portofel_virtual_jwt_secret_key_2024
 JWT_ALGORITHM=HS256
 JWT_EXPIRE_DAYS=7
-FASTAPI_PORT=8000
+FASTAPI_PORT=9000
 FASTAPI_HOST=0.0.0.0
 CORS_ORIGINS=*
 ```
@@ -715,7 +1145,7 @@ CORS_ORIGINS=*
 run.bat
 
 # Sau direct
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 9000
 ```
 
 ### Variabile de Mediu
@@ -726,15 +1156,15 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 | `JWT_SECRET` | Secret JWT | `portofel_virtual_jwt_secret_key_2024` |
 | `JWT_ALGORITHM` | Algoritm JWT | `HS256` |
 | `JWT_EXPIRE_DAYS` | Zile expirare token | `7` |
-| `FASTAPI_PORT` | Port server | `8000` |
+| `FASTAPI_PORT` | Port server | `9000` |
 | `FASTAPI_HOST` | Host server | `0.0.0.0` |
 | `CORS_ORIGINS` | Origin CORS | `*` |
 
 ### Documentație Interactivă
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **Health Check**: http://localhost:8000/api/health
+- **Swagger UI**: http://localhost:9000/docs
+- **ReDoc**: http://localhost:9000/redoc
+- **Health Check**: http://localhost:9000/api/health
 
 ### Arhitectură Docker
 
@@ -746,7 +1176,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
 │  │  Frontend   │  │   Backend   │  │      FastAPI        │  │
 │  │  (Nginx)    │  │  (Express)  │  │  (Python/Uvicorn)   │  │
-│  │  Port: 8888 │  │  Port: 3001 │  │     Port: 8000      │  │
+│  │  Port: 8889 │  │  Port: 3001 │  │     Port: 9000      │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘  │
 │         │                │                    │             │
 │         └────────────────┼────────────────────┘             │
@@ -761,9 +1191,9 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 **Porturi expuse:**
-- `8888` - Frontend React
+- `8889` - Frontend React
 - `3001` - Backend Express API
-- `8000` - FastAPI (pentru OpenWebUI/AI)
+- `9000` - FastAPI (pentru OpenWebUI/AI)
 - `5433` - PostgreSQL (extern)
 
 ---
@@ -775,7 +1205,7 @@ Pentru a integra acest API cu OpenWebUI, configurează un tool personalizat cu u
 ### Configurare Tool
 
 1. **Nume**: PortofelVirtual Budget API
-2. **Base URL**: `http://localhost:8000/api`
+2. **Base URL**: `http://localhost:9000/api` sau `http://192.168.0.206:9000/api`
 3. **Autentificare**: Bearer Token (din `/auth/login`)
 
 ### Endpoint-uri Recomandate pentru AI
@@ -789,6 +1219,9 @@ Pentru a integra acest API cu OpenWebUI, configurează un tool personalizat cu u
 | Adaugă investiție | `/ai/investment` | POST |
 | Contribuie la obiectiv | `/ai/goal/{id}/contribute?amount=X` | POST |
 | Sugestii categorii | `/ai/categories/suggest` | GET |
+| **Sold bonuri de masă** | `/wallet/meal-vouchers` | GET |
+| **Primește bonuri** | `/ai/transaction` (cu `is_meal_voucher: true`) | POST |
+| **Cheltuiește bonuri** | `/ai/transaction` (cu `is_meal_voucher: true`, `category_name: "Alimente"`) | POST |
 
 ### Exemple de Prompt-uri pentru AI
 
@@ -828,9 +1261,18 @@ Body: {
 
 ## Note Importante
 
-1. **Autentificare**: Toate endpoint-urile (exceptând login și health) necesită token JWT valid
+1. **Autentificare**: Toate endpoint-urile necesită autentificare (JWT Token sau API Key)
+   - JWT Token: `Authorization: Bearer <token>`
+   - API Key: `X-API-Key: pv_<your_key>`
 2. **Timezone**: Toate datele sunt stocate în timezone-ul Europe/Bucharest
 3. **Moneda implicită**: RON (Romanian Leu)
 4. **Cursuri de schimb**: Sunt relative la RON (1 EUR = 4.97 RON înseamnă că rate = 4.97)
 5. **Categorii**: Se creează automat când adaugi o tranzacție prin `/ai/transaction`
 6. **Tranzacții recurente**: Se generează manual prin `/transactions/generate-recurring`
+7. **API Keys**: Recomandat pentru integrări AI - se generează din `/api/api-keys`
+8. **🍽️ Bonuri de masă**:
+   - Sunt COMPLETE SEPARATE de venituri/cheltuieli normale
+   - Au sold propriu, calculat independent
+   - Cheltuielile (`is_meal_voucher: true`, `type: "expense"`) pot fi făcute **DOAR** pentru categoria "Alimente"
+   - Se verifică soldul cu `GET /api/wallet/meal-vouchers`
+   - Nu apar în calculele de balanță, grafice sau distribuții standard

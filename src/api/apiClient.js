@@ -284,12 +284,31 @@ const SavingsGoal = {
   },
 };
 
+// Wallet API
+const Wallet = {
+  getBalance: async () => {
+    const response = await apiClient.get('/wallet/balance');
+    return response.data;
+  },
+
+  getSummary: async (currency = 'RON') => {
+    const response = await apiClient.get(`/wallet/summary?currency=${currency}`);
+    return response.data;
+  },
+
+  getMealVoucherBalance: async () => {
+    const response = await apiClient.get('/wallet/meal-vouchers');
+    return response.data;
+  },
+};
+
 export const api = {
   auth,
   Transaction,
   BudgetCategory,
   Investment,
   SavingsGoal,
+  Wallet,
   connectWebSocket,
   disconnectWebSocket,
   subscribeToUpdates,

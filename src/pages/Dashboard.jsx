@@ -10,7 +10,8 @@ import {
   TrendingDown,
   PiggyBank,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UtensilsCrossed
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,11 @@ export default function Dashboard() {
     queryFn: () => api.Transaction.list("-date"),
   });
 
+  const { data: mealVoucherBalance } = useQuery({
+    queryKey: ["mealVoucherBalance"],
+    queryFn: () => api.Wallet.getMealVoucherBalance(),
+  });
+
   const currencies = ['RON', 'EUR', 'USD', 'GBP'];
   const getCurrencySymbol = (curr) => {
     const symbols = { 'RON': 'RON', 'EUR': '€', 'USD': '$', 'GBP': '£' };
@@ -58,7 +64,8 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, [queryClient]);
 
-  const monthTx = transactions.filter((t) => t.month === currentMonth && t.currency === selectedCurrency);
+  // Filter out meal vouchers from regular calculations - they are tracked separately
+  const monthTx = transactions.filter((t) => t.month === currentMonth && t.currency === selectedCurrency && !t.is_meal_voucher);
   const monthIncomes = monthTx.filter((t) => t.type === "income");
   const monthExpenses = monthTx.filter((t) => t.type === "expense");
 
@@ -67,12 +74,12 @@ export default function Dashboard() {
   const balance = totalIncome - totalExpense;
   const savings = balance > 0 ? balance : 0;
 
-  // Build last 6 months chart data
+  // Build last 6 months chart data (excluding meal vouchers)
   const chartData = Array.from({ length: 6 }, (_, i) => {
     const d = subMonths(new Date(currentMonth + "-01"), 5 - i);
     const m = format(d, "yyyy-MM");
     const label = format(d, "MMM", { locale: ro });
-    const mTx = transactions.filter((t) => t.month === m && t.currency === selectedCurrency);
+    const mTx = transactions.filter((t) => t.month === m && t.currency === selectedCurrency && !t.is_meal_voucher);
     return {
       name: label,
       venituri: mTx.filter((t) => t.type === "income").reduce((s, t) => s + (t.amount || 0), 0),
@@ -200,6 +207,25 @@ export default function Dashboard() {
           trendLabel={savings > 0 ? "Bilanț pozitiv" : "Deficit"}
         />
       </div>
+
+      {/* Meal Voucher Balance Card */}
+      {mealVoucherBalance && mealVoucherBalance.balance !== 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.35 }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+        >
+          <KpiCard
+            title="Sold Bonuri de Masă"
+            value={formatCurrency(mealVoucherBalance.balance || 0) + " RON"}
+            icon={UtensilsCrossed}
+            color="purple"
+            delay={0.35}
+            trendLabel={mealVoucherBalance.transaction_count > 0 ? `${mealVoucherBalance.transaction_count} tranzacții` : "Nicio tranzacție"}
+          />
+        </motion.div>
+      )}
 
       {/* Additional KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

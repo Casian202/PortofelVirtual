@@ -52,6 +52,7 @@ export default function TransactionForm({ open, onOpenChange, type, categories, 
 
   const handleSubmit = () => {
     if (!formData.category_name || !formData.amount) return;
+
     // If recurring, override the date to use the selected day in the current month
     let submitDate = formData.date;
     if (formData.is_recurring) {
