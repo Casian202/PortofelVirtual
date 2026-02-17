@@ -597,12 +597,16 @@ GET /api/wallet/meal-vouchers
 
 **Primește bonuri (recomandat recurent):**
 ```bash
-POST /api/wallet/meal-vouchers/receive?amount=200&description=Bonuri%20lunare&is_recurring=true
+POST /api/wallet/meal-vouchers/receive
+Content-Type: application/json
+Body: {"amount": 200, "description": "Bonuri lunare", "date": "2026-02-15", "is_recurring": true}
 ```
 
 **Cheltuiește bonuri:**
 ```bash
-POST /api/wallet/meal-vouchers/spend?amount=50&description=Cumpărături%20alimentare
+POST /api/wallet/meal-vouchers/spend
+Content-Type: application/json
+Body: {"amount": 50, "description": "Cumpărături alimentare", "date": "2026-02-20"}
 ```
 
 **Listează tranzacții:**
@@ -632,20 +636,22 @@ DELETE /api/wallet/meal-vouchers/transactions/{transaction_id}
     "receive": {
       "method": "POST",
       "path": "/api/wallet/meal-vouchers/receive",
-      "description": "Primește bonuri de masă (recomandat recurent lunar)",
-      "params": {
-        "amount": "Suma în RON (obligatoriu)",
+      "description": "Primește bonuri de masă (recomandat recurent lunar). Trimite JSON body.",
+      "body": {
+        "amount": "Suma în RON (obligatoriu, > 0)",
         "description": "Descriere opțională",
-        "is_recurring": "true pentru bonuri lunare"
+        "date": "Data primirii YYYY-MM-DD (opțional, default: azi)",
+        "is_recurring": "true pentru bonuri lunare (default: true)"
       }
     },
     "spend": {
       "method": "POST",
       "path": "/api/wallet/meal-vouchers/spend",
-      "description": "Cheltuiește bonuri de masă pe Alimente",
-      "params": {
-        "amount": "Suma în RON (obligatoriu)",
-        "description": "Descriere opțională"
+      "description": "Cheltuiește bonuri de masă pe Alimente. Trimite JSON body.",
+      "body": {
+        "amount": "Suma în RON (obligatoriu, > 0)",
+        "description": "Descriere opțională",
+        "date": "Data cheltuielii YYYY-MM-DD (opțional, default: azi)"
       }
     },
     "list": {
@@ -1171,8 +1177,8 @@ Pentru a integra acest API cu OpenWebUI, configurează un tool personalizat cu u
 | Contribuie la obiectiv | `/ai/goal/{id}/contribute?amount=X` | POST |
 | Sugestii categorii | `/ai/categories/suggest` | GET |
 | **Sold bonuri de masă** | `/wallet/meal-vouchers` | GET |
-| **Primește bonuri** | `/wallet/meal-vouchers/receive?amount=X` | POST |
-| **Cheltuiește bonuri** | `/wallet/meal-vouchers/spend?amount=X` | POST |
+| **Primește bonuri** | `/wallet/meal-vouchers/receive` | POST (JSON body) |
+| **Cheltuiește bonuri** | `/wallet/meal-vouchers/spend` | POST (JSON body) |
 | **Listează tranzacții bonuri** | `/wallet/meal-vouchers/transactions` | GET |
 | **Șterge tranzacție bonuri** | `/wallet/meal-vouchers/transactions/{id}` | DELETE |
 
@@ -1226,6 +1232,8 @@ Body: {
 8. **Bonuri de masă**:
    - Au endpoint-uri DEDICATE separate de tranzacțiile normale
    - Endpoint-uri: `GET /wallet/meal-vouchers`, `POST /wallet/meal-vouchers/receive`, `POST /wallet/meal-vouchers/spend`, `GET /wallet/meal-vouchers/transactions`, `DELETE /wallet/meal-vouchers/transactions/{id}`
+   - `receive` și `spend` primesc date prin **JSON body** (NU query params)
+   - Câmpul dată acceptă atât `date` cât și `transaction_date` (format: `YYYY-MM-DD`)
    - NU se folosesc endpoint-urile `/api/transactions` pentru bonuri de masă
    - Cheltuirea: DOAR categoria "Alimente" (validare automată în backend)
    - NU apar în calculele de balanță, grafice sau distribuții standard

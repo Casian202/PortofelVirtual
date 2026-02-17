@@ -169,13 +169,13 @@ router.get('/meal-vouchers/transactions', async (req, res) => {
 // Receive meal vouchers (income)
 router.post('/meal-vouchers/receive', async (req, res) => {
   try {
-    const { amount, description, transaction_date, is_recurring = true } = req.body;
+    const { amount, description, transaction_date, date, is_recurring = true } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Amount must be greater than 0' });
     }
 
-    const txDate = transaction_date ? new Date(transaction_date) : new Date();
+    const txDate = (date || transaction_date) ? new Date(date || transaction_date) : new Date();
     const month = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}`;
     const day = txDate.getDate();
 
@@ -224,7 +224,7 @@ router.post('/meal-vouchers/receive', async (req, res) => {
 // Spend meal vouchers (expense)
 router.post('/meal-vouchers/spend', async (req, res) => {
   try {
-    const { amount, description, transaction_date } = req.body;
+    const { amount, description, transaction_date, date } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Amount must be greater than 0' });
@@ -247,7 +247,7 @@ router.post('/meal-vouchers/spend', async (req, res) => {
       });
     }
 
-    const txDate = transaction_date ? new Date(transaction_date) : new Date();
+    const txDate = (date || transaction_date) ? new Date(date || transaction_date) : new Date();
     const month = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}`;
 
     // Find "Alimente" category

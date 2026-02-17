@@ -5,7 +5,7 @@ These models represent the database schema and API contracts.
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, List, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from enum import Enum
 
 
@@ -174,7 +174,16 @@ class MealVoucherReceiveRequest(BaseModel):
     amount: Decimal = Field(..., gt=0, description="Amount in RON")
     description: Optional[str] = Field(None, description="Optional description")
     transaction_date: Optional[date] = Field(None, description="Date of receipt (defaults to today)")
+    date: Optional[date] = Field(None, description="Alias for transaction_date (frontend compatibility)", exclude=True)
     is_recurring: bool = Field(default=True, description="Whether this is a recurring monthly income")
+
+    @model_validator(mode='before')
+    @classmethod
+    def use_date_as_fallback(cls, data):
+        if isinstance(data, dict):
+            if not data.get('transaction_date') and data.get('date'):
+                data['transaction_date'] = data['date']
+        return data
 
 
 class MealVoucherSpendRequest(BaseModel):
@@ -182,6 +191,15 @@ class MealVoucherSpendRequest(BaseModel):
     amount: Decimal = Field(..., gt=0, description="Amount in RON")
     description: Optional[str] = Field(None, description="Optional description")
     transaction_date: Optional[date] = Field(None, description="Date of spending (defaults to today)")
+    date: Optional[date] = Field(None, description="Alias for transaction_date (frontend compatibility)", exclude=True)
+
+    @model_validator(mode='before')
+    @classmethod
+    def use_date_as_fallback(cls, data):
+        if isinstance(data, dict):
+            if not data.get('transaction_date') and data.get('date'):
+                data['transaction_date'] = data['date']
+        return data
 
 
 class MealVoucherResponse(TransactionResponse):
