@@ -302,6 +302,34 @@ const Wallet = {
   },
 };
 
+// Meal Vouchers API - dedicated endpoints
+const MealVouchers = {
+  getBalance: async () => {
+    const response = await apiClient.get('/wallet/meal-vouchers');
+    return response.data;
+  },
+
+  list: async (limit = 50, offset = 0) => {
+    const response = await apiClient.get(`/wallet/meal-vouchers/transactions?limit=${limit}&offset=${offset}`);
+    return response.data;
+  },
+
+  receive: async (data) => {
+    const response = await apiClient.post('/wallet/meal-vouchers/receive', data);
+    return response.data;
+  },
+
+  spend: async (data) => {
+    const response = await apiClient.post('/wallet/meal-vouchers/spend', data);
+    return response.data;
+  },
+
+  delete: async (id) => {
+    const response = await apiClient.delete(`/wallet/meal-vouchers/transactions/${id}`);
+    return response.data;
+  },
+};
+
 export const api = {
   auth,
   Transaction,
@@ -309,6 +337,7 @@ export const api = {
   Investment,
   SavingsGoal,
   Wallet,
+  MealVouchers,
   connectWebSocket,
   disconnectWebSocket,
   subscribeToUpdates,

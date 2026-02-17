@@ -80,30 +80,10 @@ router.get('/:id', async (req, res) => {
 // Create transaction
 router.post('/', async (req, res) => {
   try {
-    const { amount, type, category_id, category_name, description, date, month, currency = 'RON', is_recurring = false, recurring_day, is_meal_voucher = false } = req.body;
+    const { amount, type, category_id, category_name, description, date, month, currency = 'RON', is_recurring = false, recurring_day } = req.body;
 
     if (!amount || !type || !category_name || !date || !month) {
       return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    // Validate meal voucher expenses - can only be for "Alimente", "Food", or "Mâncare" categories
-    const allowedMealVoucherCategories = ['alimente', 'food', 'mâncare', 'mancare'];
-    if (is_meal_voucher && type === 'expense' && !allowedMealVoucherCategories.includes(category_name.toLowerCase())) {
-      return res.status(400).json({ error: 'Bonurile de masă pot fi cheltuite doar pe categoria Alimente (mâncare și produse alimentare)' });
-    }
-
-    // Check meal voucher balance for expenses
-    if (is_meal_voucher && type === 'expense') {
-      const balanceResult = await getOne(
-        `SELECT COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END), 0) as meal_voucher_balance
-         FROM transactions
-         WHERE created_by = $1 AND is_meal_voucher = true`,
-        [req.user.id]
-      );
-      const currentBalance = parseFloat(balanceResult?.meal_voucher_balance || 0);
-      if (currentBalance < amount) {
-        return res.status(400).json({ error: `Sold insuficient de bonuri de masă. Disponibil: ${currentBalance.toFixed(2)} RON` });
-      }
     }
 
     const id = uuidv4();
@@ -114,10 +94,10 @@ router.post('/', async (req, res) => {
     const rDay = is_recurring ? (recurring_day || new Date(date).getDate()) : null;
 
     const transaction = await getOne(
-      `INSERT INTO transactions (id, amount, type, category_id, category_name, description, date, month, currency, is_recurring, recurring_group_id, recurring_day, is_meal_voucher, created_by, created_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      `INSERT INTO transactions (id, amount, type, category_id, category_name, description, date, month, currency, is_recurring, recurring_group_id, recurring_day, created_by, created_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
-      [id, amount, type, category_id || null, category_name, description || null, date, month, currency, is_recurring, recurring_group_id, rDay, is_meal_voucher, req.user.id, now]
+      [id, amount, type, category_id || null, category_name, description || null, date, month, currency, is_recurring, recurring_group_id, rDay, req.user.id, now]
     );
 
     // Broadcast update via WebSocket
@@ -133,7 +113,7 @@ router.post('/', async (req, res) => {
 // Update transaction
 router.put('/:id', async (req, res) => {
   try {
-    const { amount, type, category_id, category_name, description, date, month, currency, is_recurring, recurring_day, is_meal_voucher } = req.body;
+    const { amount, type, category_id, category_name, description, date, month, currency, is_recurring, recurring_day } = req.body;
 
     // Check if transaction exists and belongs to user
     const existing = await getOne(
@@ -145,21 +125,10 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    // Determine the effective values for validation
-    const effectiveType = type ?? existing.type;
-    const effectiveCategoryName = category_name ?? existing.category_name;
-    const effectiveIsMealVoucher = is_meal_voucher ?? existing.is_meal_voucher;
-
-    // Validate meal voucher expenses - can only be for "Alimente", "Food", or "Mâncare" categories
-    const allowedMealVoucherCategories = ['alimente', 'food', 'mâncare', 'mancare'];
-    if (effectiveIsMealVoucher && effectiveType === 'expense' && !allowedMealVoucherCategories.includes(effectiveCategoryName.toLowerCase())) {
-      return res.status(400).json({ error: 'Bonurile de masă pot fi cheltuite doar pe categoria Alimente (mâncare și produse alimentare)' });
-    }
-
     const transaction = await getOne(
       `UPDATE transactions
-       SET amount = $1, type = $2, category_id = $3, category_name = $4, description = $5, date = $6, month = $7, currency = $8, is_recurring = $9, recurring_day = $10, is_meal_voucher = $11
-       WHERE id = $12
+       SET amount = $1, type = $2, category_id = $3, category_name = $4, description = $5, date = $6, month = $7, currency = $8, is_recurring = $9, recurring_day = $10
+       WHERE id = $11
        RETURNING *`,
       [
         amount ?? existing.amount,
@@ -172,7 +141,6 @@ router.put('/:id', async (req, res) => {
         currency ?? existing.currency,
         is_recurring ?? existing.is_recurring,
         recurring_day ?? existing.recurring_day,
-        is_meal_voucher ?? existing.is_meal_voucher,
         req.params.id
       ]
     );

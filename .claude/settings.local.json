@@ -9,7 +9,8 @@
       "Bash(curl:*)",
       "Bash(python:*)",
       "Bash(npm run typecheck)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(python3:*)"
     ]
   }
 }

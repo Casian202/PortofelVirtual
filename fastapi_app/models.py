@@ -4,7 +4,7 @@ These models represent the database schema and API contracts.
 """
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Literal
 from pydantic import BaseModel, Field
 from enum import Enum
 
@@ -124,7 +124,6 @@ class TransactionBase(BaseModel):
     currency: Optional[str] = "RON"
     is_recurring: Optional[bool] = False
     recurring_day: Optional[int] = Field(None, ge=1, le=31, description="Day of month for recurring")
-    is_meal_voucher: Optional[bool] = False
 
 
 class TransactionCreate(TransactionBase):
@@ -144,7 +143,6 @@ class TransactionUpdate(BaseModel):
     currency: Optional[str] = None
     is_recurring: Optional[bool] = None
     recurring_day: Optional[int] = Field(None, ge=1, le=31)
-    is_meal_voucher: Optional[bool] = None
 
 
 class TransactionResponse(TransactionBase):
@@ -158,6 +156,22 @@ class TransactionResponse(TransactionBase):
 
     class Config:
         from_attributes = True
+
+
+class MealVoucherTransaction(BaseModel):
+    """Model for creating meal voucher transactions."""
+    amount: Decimal = Field(..., gt=0, description="Amount in RON")
+    type: Literal["income", "expense"]
+    category_name: str
+    description: Optional[str] = None
+    date: Optional[date] = None
+    is_recurring: bool = Field(default=True, description="Meal vouchers are typically monthly recurring")
+    recurring_day: Optional[int] = Field(default=15, ge=1, le=31, description="Day of month for recurring")
+
+
+class MealVoucherResponse(TransactionResponse):
+    """Response model for meal voucher transactions."""
+    pass
 
 
 # ============================================

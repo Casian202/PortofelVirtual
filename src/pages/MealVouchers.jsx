@@ -38,10 +38,10 @@ export default function MealVouchers() {
   const [showSpendForm, setShowSpendForm] = useState(false);
   const queryClient = useQueryClient();
 
-  // Fetch meal voucher balance
+  // Fetch meal voucher balance using dedicated endpoint
   const { data: mealVoucherData } = useQuery({
     queryKey: ["meal-voucher-balance"],
-    queryFn: () => api.Wallet.getMealVoucherBalance(),
+    queryFn: () => api.MealVouchers.getBalance(),
   });
 
   // Fetch categories to find "Alimente"
@@ -50,43 +50,49 @@ export default function MealVouchers() {
     queryFn: () => api.BudgetCategory.list(),
   });
 
-  // Fetch all transactions and filter for meal vouchers
-  const { data: transactions = [] } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: () => api.Transaction.list("-date"),
+  // Fetch meal voucher transactions using dedicated endpoint
+  const { data: mealVoucherTransactions = [] } = useQuery({
+    queryKey: ["meal-voucher-transactions"],
+    queryFn: () => api.MealVouchers.list(),
   });
 
   // Subscribe to real-time updates
   useEffect(() => {
     const unsubscribe = api.subscribeToUpdates((message) => {
-      if (message.type.startsWith('transaction_')) {
-        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      if (message.type.startsWith('meal_voucher_') || message.type.startsWith('transaction_')) {
+        queryClient.invalidateQueries({ queryKey: ["meal-voucher-transactions"] });
         queryClient.invalidateQueries({ queryKey: ["meal-voucher-balance"] });
       }
     });
     return () => unsubscribe();
   }, [queryClient]);
 
-  // Create transaction mutation
-  const createMutation = useMutation({
-    mutationFn: (data) => api.Transaction.create(data),
+  // Receive meal voucher mutation
+  const receiveMutation = useMutation({
+    mutationFn: (data) => api.MealVouchers.receive(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["meal-voucher-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["meal-voucher-balance"] });
+    },
+  });
+
+  // Spend meal voucher mutation
+  const spendMutation = useMutation({
+    mutationFn: (data) => api.MealVouchers.spend(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["meal-voucher-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["meal-voucher-balance"] });
     },
   });
 
   // Delete transaction mutation
   const deleteMutation = useMutation({
-    mutationFn: (id) => api.Transaction.delete(id),
+    mutationFn: (id) => api.MealVouchers.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["meal-voucher-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["meal-voucher-balance"] });
     },
   });
-
-  // Filter meal voucher transactions
-  const mealVoucherTransactions = transactions.filter((t) => t.is_meal_voucher === true);
 
   // Get the "Alimente" category for spending
   const alimenteCategory = categories.find((c) => c.name === "Alimente" && c.type === "expense");
@@ -257,7 +263,7 @@ export default function MealVouchers() {
         onOpenChange={setShowReceiveForm}
         type="income"
         categories={categories.filter((c) => c.type === "income" && c.is_active !== false)}
-        onSubmit={(data) => createMutation.mutate(data)}
+        onSubmit={(data) => receiveMutation.mutate(data)}
       />
 
       {/* Spend Form Dialog */}
@@ -266,7 +272,7 @@ export default function MealVouchers() {
         onOpenChange={setShowSpendForm}
         type="expense"
         categories={alimenteCategory ? [alimenteCategory] : []}
-        onSubmit={(data) => createMutation.mutate(data)}
+        onSubmit={(data) => spendMutation.mutate(data)}
         isSpendForm={true}
       />
     </div>
@@ -308,14 +314,15 @@ function MealVoucherForm({ open, onOpenChange, type, categories, onSubmit, isSpe
   const handleSubmit = () => {
     if (!formData.category_name || !formData.amount) return;
 
+    // Submit data - backend sets is_meal_voucher automatically
     onSubmit({
-      ...formData,
-      date: formData.date,
+      category_id: formData.category_id,
+      category_name: formData.category_name,
       amount: parseFloat(formData.amount),
-      type,
+      description: formData.description,
+      date: formData.date,
       month: formData.date.slice(0, 7),
       currency: "RON",
-      is_meal_voucher: true,
       is_recurring: type === "income" ? formData.is_recurring : false,
       recurring_day: type === "income" && formData.is_recurring ? formData.recurring_day : null,
     });
