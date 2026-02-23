@@ -73,7 +73,7 @@ export default function TransactionList({ transactions, type, onDelete }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => onDelete(tx.id)}
-                className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all"
+                className="h-8 w-8 sm:h-8 sm:w-8 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>

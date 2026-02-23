@@ -210,7 +210,7 @@ export default function Layout({ children, currentPageName }) {
 
         {/* Sidebar - desktop (collapsible) */}
         <aside
-          className={`hidden lg:flex sticky top-0 left-0 h-screen ${sidebarWidth} bg-[#1A1D29]/80 backdrop-blur-xl border-r border-[#2A2E3D] flex-col transition-all duration-300`}
+          className={`hidden lg:flex fixed top-0 left-0 h-screen ${sidebarWidth} bg-[#1A1D29]/80 backdrop-blur-xl border-r border-[#2A2E3D] flex-col transition-all duration-300 z-40`}
         >
           {/* Desktop Logo */}
           <div className={`border-b border-[#2A2E3D] ${collapsed ? 'p-3 flex justify-center' : 'p-5'}`}>
@@ -329,8 +329,8 @@ export default function Layout({ children, currentPageName }) {
           </div>
         </aside>
 
-        {/* Main */}
-        <main className="flex-1 min-h-screen min-w-0 overflow-x-hidden">
+        {/* Main - with margin-left to compensate for fixed sidebar */}
+        <main className={`flex-1 min-h-screen min-w-0 overflow-x-hidden ${collapsed ? 'lg:ml-[72px]' : 'lg:ml-64'}`}>
           {/* Mobile header */}
           <div className="lg:hidden sticky top-0 z-30 bg-[#0F1117]/80 backdrop-blur-xl border-b border-[#2A2E3D] px-4 py-3 flex items-center justify-between">
             <button

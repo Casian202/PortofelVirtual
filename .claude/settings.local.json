@@ -12,5 +12,6 @@
       "Bash(npx eslint:*)",
       "Bash(python3:*)"
     ]
-  }
+  },
+  "outputStyle": "Explanatory"
 }

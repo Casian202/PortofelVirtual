@@ -302,6 +302,19 @@ const Wallet = {
   },
 };
 
+// Exchange Rates API
+const ExchangeRates = {
+  list: async () => {
+    const response = await apiClient.get('/exchange-rates');
+    return response.data;
+  },
+
+  update: async (currency, rate) => {
+    const response = await apiClient.put(`/exchange-rates/${currency}`, { rate });
+    return response.data;
+  },
+};
+
 // Meal Vouchers API - dedicated endpoints
 const MealVouchers = {
   getBalance: async () => {
@@ -337,6 +350,7 @@ export const api = {
   Investment,
   SavingsGoal,
   Wallet,
+  ExchangeRates,
   MealVouchers,
   connectWebSocket,
   disconnectWebSocket,

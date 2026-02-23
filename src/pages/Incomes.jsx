@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { api } from "@/api/apiClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
-import { Plus, TrendingUp } from "lucide-react";
+import { Plus, TrendingUp, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils";
 
 import MonthSelector from "../components/finance/MonthSelector";
@@ -33,6 +34,9 @@ const getRomaniaMonth = () => {
 export default function Incomes() {
   const [currentMonth, setCurrentMonth] = useState(getRomaniaMonth());
   const [showForm, setShowForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterCurrency, setFilterCurrency] = useState("all");
   const queryClient = useQueryClient();
 
   const { data: categories = [] } = useQuery({
@@ -80,7 +84,25 @@ export default function Incomes() {
   });
 
   const incomeCategories = categories.filter((c) => c.type === "income" && c.is_active !== false);
-  const monthIncomes = transactions.filter((t) => t.type === "income" && !t.is_meal_voucher && t.month === currentMonth);
+  const allMonthIncomes = transactions.filter((t) => t.type === "income" && !t.is_meal_voucher && t.month === currentMonth);
+
+  // Get unique currencies used in this month's incomes
+  const usedCurrencies = useMemo(() => {
+    const currencies = new Set(allMonthIncomes.map(t => t.currency || 'RON'));
+    return Array.from(currencies);
+  }, [allMonthIncomes]);
+
+  // Filter incomes based on search and filters
+  const monthIncomes = useMemo(() => {
+    return allMonthIncomes.filter(t => {
+      const matchesSearch = !searchQuery || 
+        t.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.category_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = filterCategory === "all" || t.category_id === parseInt(filterCategory);
+      const matchesCurrency = filterCurrency === "all" || (t.currency || 'RON') === filterCurrency;
+      return matchesSearch && matchesCategory && matchesCurrency;
+    });
+  }, [allMonthIncomes, searchQuery, filterCategory, filterCurrency]);
 
   // Group totals by currency - only currencies that have transactions
   const totalsByCurrency = {};
@@ -141,7 +163,48 @@ export default function Incomes() {
         transition={{ delay: 0.2 }}
         className="rounded-2xl bg-[#1A1D29] border border-[#2A2E3D] p-3 sm:p-6"
       >
-        <h2 className="text-base sm:text-lg font-bold mb-4">Lista Venituri</h2>
+        <div className="flex flex-col gap-4 mb-4">
+          <h2 className="text-base sm:text-lg font-bold">Lista Venituri</h2>
+          
+          {/* Search and Filters - responsive grid for mobile */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <Input
+                placeholder="Caută..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 w-full h-10 sm:h-9 bg-[#0F1117] border-[#2A2E3D] text-sm rounded-xl"
+              />
+            </div>
+            
+            {/* Category Filter */}
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="h-10 sm:h-9 px-3 rounded-xl bg-[#0F1117] border border-[#2A2E3D] text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            >
+              <option value="all">Toate categoriile</option>
+              {incomeCategories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+            
+            {/* Currency Filter */}
+            <select
+              value={filterCurrency}
+              onChange={(e) => setFilterCurrency(e.target.value)}
+              className="h-10 sm:h-9 px-3 rounded-xl bg-[#0F1117] border border-[#2A2E3D] text-sm text-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            >
+              <option value="all">Toate valutele</option>
+              {usedCurrencies.map(curr => (
+                <option key={curr} value={curr}>{getCurrencySymbol(curr)}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        
         <TransactionList
           transactions={monthIncomes}
           type="income"
