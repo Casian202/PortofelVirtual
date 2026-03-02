@@ -52,10 +52,18 @@ export default function Expenses() {
     queryFn: () => api.Transaction.list("-date"),
   });
 
-  // Auto-generate recurring transactions when month changes (only once per month)
+  // Auto-generate recurring transactions only for current or past months (Europe/Bucharest)
+  // For the current month, always check (new recurring may become eligible each day)
+  // For past months, only run once (cached in localStorage)
   useEffect(() => {
+    const romaniaMonth = getRomaniaMonth();
+    // Never generate recurring for future months
+    if (currentMonth > romaniaMonth) return;
+
+    const isCurrentMonth = currentMonth === romaniaMonth;
     const key = `recurring_generated_${currentMonth}`;
-    if (localStorage.getItem(key)) return;
+    // For past months, skip if already generated; for current month, always re-check
+    if (!isCurrentMonth && localStorage.getItem(key)) return;
 
     const generateRecurring = async () => {
       try {
@@ -63,9 +71,14 @@ export default function Expenses() {
         if (result.created > 0) {
           queryClient.invalidateQueries({ queryKey: ["transactions"] });
         }
-        localStorage.setItem(key, 'true');
+        // Mark past months as done; don't cache current month
+        if (!isCurrentMonth) {
+          localStorage.setItem(key, 'true');
+        }
       } catch (error) {
-        localStorage.setItem(key, 'true');
+        if (!isCurrentMonth) {
+          localStorage.setItem(key, 'true');
+        }
         console.log('Recurring generation:', error?.response?.data?.message || 'done');
       }
     };

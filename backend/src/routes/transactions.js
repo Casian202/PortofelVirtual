@@ -188,6 +188,15 @@ router.post('/generate-recurring', async (req, res) => {
       return res.status(400).json({ error: 'Month is required (YYYY-MM)' });
     }
 
+    // Block generation for future months (Europe/Bucharest timezone)
+    const now = new Date();
+    const romaniaMonth = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Bucharest', year: 'numeric', month: '2-digit' }).slice(0, 7);
+    const romaniaDay = parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Bucharest', day: 'numeric' }).format(now));
+    if (month > romaniaMonth) {
+      return res.json({ message: 'Cannot generate recurring transactions for future months', created: 0 });
+    }
+    const isCurrentMonth = (month === romaniaMonth);
+
     // Find all recurring templates for this user (original ones with is_recurring=true)
     const recurringTemplates = await getMany(
       `SELECT DISTINCT ON (recurring_group_id) *
@@ -199,6 +208,14 @@ router.post('/generate-recurring', async (req, res) => {
 
     let created = 0;
     for (const tmpl of recurringTemplates) {
+      // Use recurring_day if set, otherwise extract from original date
+      const recurringDay = tmpl.recurring_day || new Date(tmpl.date).getDate();
+
+      // For the current month, only generate if the recurring day has already arrived
+      if (isCurrentMonth && recurringDay > romaniaDay) {
+        continue;
+      }
+
       // Check if already generated for this month
       const existing = await getOne(
         `SELECT id FROM transactions 
@@ -207,12 +224,10 @@ router.post('/generate-recurring', async (req, res) => {
       );
 
       if (!existing) {
-        // Use recurring_day if set, otherwise extract from original date
-        const day = (tmpl.recurring_day || new Date(tmpl.date).getDate()).toString().padStart(2, '0');
-        // Clamp to last day of the target month (e.g., day 31 in February -> 28/29)
+        // Clamp recurring day to last day of the target month (e.g., day 31 in February -> 28/29)
         const [year, mon] = month.split('-').map(Number);
         const lastDayOfMonth = new Date(year, mon, 0).getDate();
-        const clampedDay = Math.min(parseInt(day), lastDayOfMonth).toString().padStart(2, '0');
+        const clampedDay = Math.min(recurringDay, lastDayOfMonth).toString().padStart(2, '0');
         const newDate = `${month}-${clampedDay}`;
 
         const id = uuidv4();
