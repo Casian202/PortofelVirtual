@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { api } from "@/api/apiClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -7,6 +7,7 @@ import { Plus, TrendingUp, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatCurrency } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
 
 import MonthSelector from "../components/finance/MonthSelector";
 import TransactionForm from "../components/finance/TransactionForm";
@@ -34,10 +35,12 @@ const getRomaniaMonth = () => {
 export default function Incomes() {
   const [currentMonth, setCurrentMonth] = useState(getRomaniaMonth());
   const [showForm, setShowForm] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterCurrency, setFilterCurrency] = useState("all");
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
@@ -49,13 +52,21 @@ export default function Incomes() {
     queryFn: () => api.Transaction.list("-date"),
   });
 
-  // Auto-generate recurring transactions when month changes
+  // Auto-generate recurring transactions when month changes (only once per month)
   useEffect(() => {
+    const key = `recurring_generated_${currentMonth}`;
+    if (localStorage.getItem(key)) return;
+
     const generateRecurring = async () => {
       try {
-        await api.Transaction.generateRecurring(currentMonth);
-        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        const result = await api.Transaction.generateRecurring(currentMonth);
+        if (result.created > 0) {
+          queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        }
+        localStorage.setItem(key, 'true');
       } catch (error) {
+        // Set flag even on error to avoid retrying endlessly
+        localStorage.setItem(key, 'true');
         console.log('Recurring generation:', error?.response?.data?.message || 'done');
       }
     };
@@ -75,12 +86,52 @@ export default function Incomes() {
 
   const createMutation = useMutation({
     mutationFn: (data) => api.Transaction.create(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      // If a recurring transaction was created, clear the generation flag so it can be picked up
+      toast({ title: "Venit adăugat", description: "Tranzacția a fost salvată cu succes." });
+    },
+    onError: (error) => {
+      toast({ title: "Eroare", description: error?.response?.data?.error || "Nu s-a putut adăuga venitul.", variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => api.Transaction.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      setEditingTransaction(null);
+      toast({ title: "Venit actualizat", description: "Tranzacția a fost actualizată cu succes." });
+    },
+    onError: (error) => {
+      toast({ title: "Eroare", description: error?.response?.data?.error || "Nu s-a putut actualiza venitul.", variant: "destructive" });
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => api.Transaction.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+    onMutate: async (id) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["transactions"] });
+      // Snapshot previous value
+      const previousTransactions = queryClient.getQueryData(["transactions"]);
+      // Optimistically remove the transaction from the list
+      queryClient.setQueryData(["transactions"], (old) =>
+        old ? old.filter((t) => t.id !== id) : []
+      );
+      return { previousTransactions };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      toast({ title: "Venit șters", description: "Tranzacția a fost ștearsă cu succes." });
+    },
+    onError: (error, _id, context) => {
+      // Rollback to previous data on error
+      if (context?.previousTransactions) {
+        queryClient.setQueryData(["transactions"], context.previousTransactions);
+      }
+      toast({ title: "Eroare la ștergere", description: error?.response?.data?.error || "Nu s-a putut șterge venitul. Încearcă din nou.", variant: "destructive" });
+    },
   });
 
   const incomeCategories = categories.filter((c) => c.type === "income" && c.is_active !== false);
@@ -209,16 +260,37 @@ export default function Incomes() {
           transactions={monthIncomes}
           type="income"
           onDelete={(id) => deleteMutation.mutate(id)}
+          onEdit={(tx) => {
+            setEditingTransaction(tx);
+            setShowForm(true);
+          }}
         />
       </motion.div>
 
       <TransactionForm
         open={showForm}
-        onOpenChange={setShowForm}
+        onOpenChange={(open) => {
+          setShowForm(open);
+          if (!open) setEditingTransaction(null);
+        }}
         type="income"
         categories={incomeCategories}
         currentMonth={currentMonth}
-        onSubmit={(data) => createMutation.mutate(data)}
+        editingTransaction={editingTransaction}
+        onSubmit={(data) => {
+          if (editingTransaction) {
+            updateMutation.mutate({ id: editingTransaction.id, data });
+          } else {
+            createMutation.mutate(data);
+            // Clear recurring generation flag if creating a recurring transaction
+            if (data.is_recurring) {
+              // Clear all recurring flags so new recurring gets generated in other months
+              Object.keys(localStorage).forEach(k => {
+                if (k.startsWith('recurring_generated_')) localStorage.removeItem(k);
+              });
+            }
+          }
+        }}
       />
     </div>
   );

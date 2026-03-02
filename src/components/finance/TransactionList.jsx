@@ -1,12 +1,12 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, FileText, RefreshCw } from "lucide-react";
+import { Trash2, Pencil, FileText, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
 import { formatCurrency } from "@/lib/utils";
 
-export default function TransactionList({ transactions, type, onDelete }) {
+export default function TransactionList({ transactions, type, onDelete, onEdit }) {
   if (!transactions || transactions.length === 0) {
     return (
       <div className="text-center py-16">
@@ -69,6 +69,16 @@ export default function TransactionList({ transactions, type, onDelete }) {
               }`}>
                 {type === "income" ? "+" : "-"}{formatCurrency(tx.amount)} {tx.currency || 'RON'}
               </span>
+              {onEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onEdit(tx)}
+                  className="h-8 w-8 sm:h-8 sm:w-8 rounded-lg text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"

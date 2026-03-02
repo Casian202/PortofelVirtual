@@ -33,8 +33,8 @@ const getRomaniaDay = () => {
   return parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Bucharest', day: 'numeric' }).format(now));
 };
 
-export default function TransactionForm({ open, onOpenChange, type, categories, currentMonth, onSubmit }) {
-  const [formData, setFormData] = useState({
+export default function TransactionForm({ open, onOpenChange, type, categories, currentMonth, onSubmit, editingTransaction = null }) {
+  const getInitialFormData = () => ({
     category_id: "",
     category_name: "",
     amount: "",
@@ -44,6 +44,26 @@ export default function TransactionForm({ open, onOpenChange, type, categories, 
     is_recurring: false,
     recurring_day: getRomaniaDay(),
   });
+
+  const [formData, setFormData] = useState(getInitialFormData());
+
+  // When editingTransaction changes, populate form
+  React.useEffect(() => {
+    if (editingTransaction) {
+      setFormData({
+        category_id: editingTransaction.category_id || "",
+        category_name: editingTransaction.category_name || "",
+        amount: String(editingTransaction.amount || ""),
+        description: editingTransaction.description || "",
+        date: editingTransaction.date ? editingTransaction.date.slice(0, 10) : getRomaniaDate(),
+        currency: editingTransaction.currency || "RON",
+        is_recurring: editingTransaction.is_recurring || false,
+        recurring_day: editingTransaction.recurring_day || getRomaniaDay(),
+      });
+    } else {
+      setFormData(getInitialFormData());
+    }
+  }, [editingTransaction]);
 
   const handleCategoryChange = (catId) => {
     const cat = categories.find((c) => c.id === catId);
@@ -66,9 +86,11 @@ export default function TransactionForm({ open, onOpenChange, type, categories, 
       type,
       month: currentMonth,
     });
-    setFormData({ category_id: "", category_name: "", amount: "", description: "", date: getRomaniaDate(), currency: "RON", is_recurring: false, recurring_day: getRomaniaDay() });
+    setFormData(getInitialFormData());
     onOpenChange(false);
   };
+
+  const isEditing = !!editingTransaction;
 
   const typeLabel = type === "income" ? "Venit" : "Cheltuială";
   const currencies = ['RON', 'EUR', 'USD', 'GBP'];
@@ -82,8 +104,12 @@ export default function TransactionForm({ open, onOpenChange, type, categories, 
       <DialogContent className="bg-[#1A1D29] border-[#2A2E3D] text-white max-w-md">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold flex items-center gap-2">
-            <Plus className={`w-5 h-5 ${type === "income" ? "text-emerald-400" : "text-red-400"}`} />
-            Adaugă {typeLabel}
+            {isEditing ? (
+              <Save className={`w-5 h-5 ${type === "income" ? "text-emerald-400" : "text-red-400"}`} />
+            ) : (
+              <Plus className={`w-5 h-5 ${type === "income" ? "text-emerald-400" : "text-red-400"}`} />
+            )}
+            {isEditing ? `Editează ${typeLabel}` : `Adaugă ${typeLabel}`}
           </DialogTitle>
         </DialogHeader>
 
@@ -212,7 +238,7 @@ export default function TransactionForm({ open, onOpenChange, type, categories, 
             }`}
           >
             <Save className="w-4 h-4 mr-2" />
-            Salvează
+            {isEditing ? 'Actualizează' : 'Salvează'}
           </Button>
         </DialogFooter>
       </DialogContent>
